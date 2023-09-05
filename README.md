@@ -23,6 +23,3 @@ To decompose an audio file, run the following command:
 python decomposer.py input_file.wav output_directory
 ```
 
-## License
-
-This code is licensed under the GNU GENERAL PUBLIC LICENSE. See the `LICENSE` file for more information.
