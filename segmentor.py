@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.9
 import os
 import librosa
 import argparse
@@ -9,6 +10,8 @@ from beat_detector import BeatDetector
 class Segmentor:
     def __init__(self, args):
         self.args = args
+        self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
+        self.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
 
     def render_segments(self, y, sr, onsets, output_directory):
         for i in range(len(onsets) - 1):
@@ -58,65 +61,65 @@ class Segmentor:
 
                 segment_path = os.path.join(output_folder, f"segment_{i}.wav")
                 sf.write(segment_path, segment, sr, format='WAV', subtype='FLOAT')
-
-    def segment_audio(self):
+                
+    def segment_using_boundaries(self, boundaries):
+        segments = []
+        for i in range(len(boundaries) - 1):
+            start_sample = boundaries[i]
+            end_sample = boundaries[i + 1]
+            segment = self.y[start_sample:end_sample]
+            segments.append(segment)
+        return segments
+    
+    def main(self):
         if self.args.segmentation_method == 'onset':
             detector = OnsetDetector(self.args)
-            onsets = detector.detect_onsets()
+            segments = detector.detect_onsets()
         elif self.args.segmentation_method == 'beat':
             detector = BeatDetector(self.args)
-            onsets = detector.detect_beats()
+            segments = self.segment_using_boundaries(detector.detect_beats())
 
         if self.args.segmentation_method == 'text':
             if(not self.args.input_text):
                 self.args.input_text = os.path.splitext(self.args.input_file)[0] + '.txt'
-            self.segment_using_txt(self.args.input_file, self.args.input_text, output_directory, self.args.file_format)
-        else:
-            y, sr = librosa.load(self.args.input_file, sr=self.args.sample_rate)
-            output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
-            os.makedirs(output_directory, exist_ok=True)
-            self.render_segments(y, sr, onsets, output_directory)
+            self.segment_using_txt(self.args.input_file, self.args.input_text, self.args.output_directory, self.args.file_format)
+        # else:
+        #     os.makedirs(self.output_directory, exist_ok=True)
+        #     self.render_segments(self.y, self.args.sample_rate, segments, self.output_directory)
 
         if self.args.save_txt:
-            self.save_segments_as_txt(onsets, output_directory, sr)
+            self.save_segments_as_txt(segments, self.output_directory, self.args.sr)
             
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Split audio files based on segments from a text file.")
-    parser.add_argument("--i", "--input-file", type=str, help="Path to the audio file (wav, aif, aiff).", required=True)
-    parser.add_argument("--input-text", type=str, help="The text file containing the segmentation data. Defaults to the nameofaudio.txt", required=False)
-    parser.add_argument("--o", "--output-directory", type=str, default=None, help="Path to the output directory. Optional.", required=False)
-    parser.add_argument("--segmentation-method", type=str, choices=["onset", "beat", "text"], help="Segmentation method to use.", required=True)
+    parser.add_argument("-i", "--input-file", type=str, help="Path to the audio file (wav, aif, aiff).", required=True)
+    parser.add_argument("-tx","--input-text", type=str, help="The text file containing the segmentation data. Defaults to the nameofaudio.txt", required=False)
+    parser.add_argument("-o", "--output-directory", type=str, default=None, help="Path to the output directory. Optional.", required=False)
+    parser.add_argument("-m","--segmentation-method", type=str, choices=["onset", "beat", "text"], help="Segmentation method to use.", required=True)
     parser.add_argument("--save-txt", action='store_true', help="Save segment times to a text file.")
     parser.add_argument("--min-length", type=float, default=0.1, help="Minimum length of a segment in seconds. Default is 0.1s.\
                         anything shorter won't be used", required=False)
     parser.add_argument("--fade-duration", type=int, default=50, help="Duration in ms for fade in and out. Default is 50ms.", required=False)
     parser.add_argument("--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fade in and out. Default is exponential.", required=False)
+    
     parser.add_argument("--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
-
-    # onset detection parameters
-    parser.add_argument("--hop-length", type=int, default=512, help="Hop length in samples. Default is 512.", required=False)
+    parser.add_argument("--fmin", type=float, default=27.5, help="Minimum frequency. Default is 27.5.", required=False)
+    parser.add_argument("--fmax", type=float, default=16000, help="Maximum frequency. Optional.", required=False)
     parser.add_argument("--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.5.", required=False)
     parser.add_argument("--onset-min-distance", type=float, default=0.0, help="Minimum distance between onsets in seconds. Default is 0.0.", required=False)
     parser.add_argument("--decompose", type=str, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components.", required=False)
-
-    # beat detection parameters
-    parser.add_argument("--tempo", type=float, default=None, help="Tempo of the audio file. Optional.", required=False)
-    parser.add_argument("--hop-length-seconds", type=float, default=0.01, help="Hop length in seconds. Default is 0.01s.", required=False)
-    parser.add_argument("--fft-size", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
     parser.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
     parser.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
-    parser.add_argument("--n-mels", type=int, default=128, help="Number of Mel bands. Default is 128.", required=False)
-    parser.add_argument("--fmin", type=float, default=0, help="Minimum frequency. Default is 0.", required=False)
-    parser.add_argument("--fmax", type=float, default=None, help="Maximum frequency. Optional.", required=False)
+    parser.add_argument("-k", type=int, default=5, help="Number of beat clusters. Default is 5.", required=False)
 
     # text segmentation parameters
-    parser.add_argument("--segment-times", type=str, default=None, help="Segment times in seconds separated by commas. Optional.", required=False)
+    # parser.add_argument("--segment-times", type=str, default=None, help="Segment times in seconds separated by commas. Optional.", required=False)
 
     args = parser.parse_args()
 
     segmentor = Segmentor(args)
-    segmentor.segment_audio()
+    segmentor.main()
     
     

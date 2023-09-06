@@ -14,7 +14,7 @@ This repository contains code for audio segmentation and decomposition using the
 To segment an audio file, run the following command:
 
 ```
-python segmenter.py input_file.wav output_directory
+python segmentor.py input_file.wav output_directory -m beat 
 ```
 
 To decompose an audio file, run the following command:

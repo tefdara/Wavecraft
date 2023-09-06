@@ -7,8 +7,6 @@ import numpy as np
 import traceback
 import asyncio
 from utils import apply_fadeout as fade, bcolors
-from decomposer import Decomposer
-from segmenter import render_segments, save_segments_as_txt
 
 
 class OnsetDetector:
@@ -45,6 +43,7 @@ class OnsetDetector:
 
         if self.decompose:
             # wait for the decomposition to finish
+            from decomposer import Decomposer
             print(f'{bcolors.YELLOW}Decomposing the signal into harmonic and percussive components...{bcolors.ENDC}')
             decomposer = Decomposer(self.input_file, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input_file), 'components'))
             H, P = await decomposer._decompose_hpss(y, n_fft=n_fft, hop_length=hop_length)
@@ -65,14 +64,17 @@ class OnsetDetector:
         if user_input.lower() == '3':
             sys.exit()
 
+        from segmentor import Segmentor
+        
+        segmentor = Segmentor(self.args)
         output_directory = os.path.join(os.path.dirname(self.input_file), 'segments')
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
 
         if user_input.lower() == '1':
-            render_segments(y, sr, onsets, output_directory, self)
+            segmentor.render_segments(y, sr, onsets, output_directory, self)
         elif user_input.lower() == '2':
-            save_segments_as_txt(onsets, output_directory, sr)
+            segmentor.save_segments_as_txt(onsets, output_directory, sr)
 
         print(f'{bcolors.GREEN}Done.{bcolors.ENDC}')
 
