@@ -26,7 +26,7 @@ class OnsetDetector:
                                               sr=sr,
                                               hop_length=hop_length,
                                               lag=lag, max_size=max_size)
-        onsets = librosa.onset.onset_detect(onset_envelope=o_env, sr=sr, hop_length=hop_length, units='samples', delta=self.peak_threshold, backtrack=True)
+        onsets = librosa.onset.onset_detect(onset_envelope=o_env, sr=sr, hop_length=hop_length, delta=self.peak_threshold, backtrack=True)
 
         return onsets
 

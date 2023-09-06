@@ -13,19 +13,22 @@ class Segmentor:
         self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
         self.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
 
-    def render_segments(self, y, sr, onsets, output_directory):
-        for i in range(len(onsets) - 1):
-            start_sample = onsets[i]
-            end_sample = onsets[i + 1]
+    def render_segments(self, y, sr, segments, output_directory):
+        segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+        count = 0
+        for i in range(len(segments) - 1):
+            start_sample = segments[i]
+            end_sample = segments[i + 1]
             segment = y[start_sample:end_sample]
             # skip segments that are too short
             segment_length = len(segment) / sr
             if segment_length < self.args.min_length:
-                print(f'{bcolors.YELLOW}Skipping segment {i} because it\'s too short.{bcolors.ENDC}')
+                print(f'{bcolors.YELLOW}Skipping segment {i} because it\'s too short{bcolors.ENDC} : {segment_length}s')
                 continue
+            count += 1
             faded_seg = fade(segment, sr, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
-            segment_path = os.path.join(output_directory, os.path.basename(self.args.input_file).split('.')[0]+f'_{i}.wav')
-            print(f'{bcolors.GREEN}Saving segment {i} to {segment_path}.{bcolors.ENDC}')
+            segment_path = os.path.join(output_directory, os.path.basename(self.args.input_file).split('.')[0]+f'_{count}.wav')
+            print(f'{bcolors.GREEN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
             sf.write(segment_path, faded_seg, sr, format='WAV', subtype='FLOAT')
 
@@ -49,8 +52,8 @@ class Segmentor:
             for i, line in enumerate(lines):
                 tokens = line.split()
                 start_time, end_time = tokens[:2]
-                start_time = float(start_time) * 1000  # convert to milliseconds
-                end_time = float(end_time) * 1000    # convert to milliseconds
+                start_time = float(start_time) * 1000  
+                end_time = float(end_time) * 1000 
 
                 start_sample = int(start_time * sr / 1000)
                 end_sample = int(end_time * sr / 1000)
@@ -62,30 +65,21 @@ class Segmentor:
                 segment_path = os.path.join(output_folder, f"segment_{i}.wav")
                 sf.write(segment_path, segment, sr, format='WAV', subtype='FLOAT')
                 
-    def segment_using_boundaries(self, boundaries):
-        segments = []
-        for i in range(len(boundaries) - 1):
-            start_sample = boundaries[i]
-            end_sample = boundaries[i + 1]
-            segment = self.y[start_sample:end_sample]
-            segments.append(segment)
-        return segments
-    
     def main(self):
         if self.args.segmentation_method == 'onset':
             detector = OnsetDetector(self.args)
             segments = detector.detect_onsets()
         elif self.args.segmentation_method == 'beat':
             detector = BeatDetector(self.args)
-            segments = self.segment_using_boundaries(detector.detect_beats())
+            segments = detector.detect_beats()
 
         if self.args.segmentation_method == 'text':
             if(not self.args.input_text):
                 self.args.input_text = os.path.splitext(self.args.input_file)[0] + '.txt'
             self.segment_using_txt(self.args.input_file, self.args.input_text, self.args.output_directory, self.args.file_format)
-        # else:
-        #     os.makedirs(self.output_directory, exist_ok=True)
-        #     self.render_segments(self.y, self.args.sample_rate, segments, self.output_directory)
+        else:
+            os.makedirs(self.output_directory, exist_ok=True)
+            self.render_segments(self.y, self.args.sample_rate, segments, self.output_directory)
 
         if self.args.save_txt:
             self.save_segments_as_txt(segments, self.output_directory, self.args.sr)

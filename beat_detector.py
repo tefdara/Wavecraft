@@ -57,7 +57,7 @@ class BeatDetector:
         boundaries = 1 + np.flatnonzero(labels[:-1] != labels[1:])
         boundaries = librosa.util.fix_frames(boundaries, x_min=0)
         bound_frames = beat_frames[boundaries]
-        bound_frames = librosa.util.fix_frames(bound_frames, x_min=None, x_max=chroma.shape[1]-1)
+        bound_frames = librosa.util.fix_frames(bound_frames, x_min=0, x_max=chroma.shape[1]-1)
         bound_times = librosa.frames_to_time(bound_frames, sr=sr, hop_length=self.hop_size)
         
         print(f'{bcolors.GREEN}Detected {len(bound_frames)} beats.{bcolors.ENDC}')
