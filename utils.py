@@ -6,6 +6,7 @@ class bcolors:
     YELLOW = '\033[93m'
     RED = '\033[91m'
     ENDC = '\033[0m'
+    CYAN = '\033[96m'
 
 def render_components(components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
     

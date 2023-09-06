@@ -2,7 +2,7 @@ import librosa
 import numpy as np
 import argparse
 import scipy
-import sklearn.cluster
+import os
 from utils import bcolors
 
 class BeatDetector:
@@ -16,9 +16,10 @@ class BeatDetector:
         self.fmin = args.fmin
         self.fmax = args.fmax
         self.k = args.k
+        # self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         
 
-    def detect_beats(self):
+    def main(self):
         y, sr = librosa.load(self.input_file, sr=self.sr)
         
         tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr, hop_length=self.hop_size, trim=False)
@@ -62,6 +63,7 @@ class BeatDetector:
         
         print(f'{bcolors.GREEN}Detected {len(bound_frames)} beats.{bcolors.ENDC}')
         print(f'{bcolors.GREEN}Beat times: {bound_times}{bcolors.ENDC}')
+        
         return bound_frames
     
 if __name__ == "__main__":
@@ -77,6 +79,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     detector = BeatDetector(args)
-    boundaries = detector.detect_beats()
+    boundaries = detector.main()
 
     print(boundaries) 
