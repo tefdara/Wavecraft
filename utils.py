@@ -69,7 +69,7 @@ def extract_metadata(input_file):
     ]
     output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
     if 'not found' in output:
-        print(f'{bcolors.RED}ffmpeg is not installed. Please install it first.{bcolors.ENDC}')
+        print(f'{bcolors.RED}ffmpeg is not installed. Please install it if you want to copy the metadata over.{bcolors.ENDC}')
         return None
     if output:
         # print(f'\n{bcolors.GREEN}{"Printing:" }' +metadata[0].split(':')[-1].strip())
