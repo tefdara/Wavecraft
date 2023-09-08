@@ -1,4 +1,4 @@
-import os, librosa, soundfile as sf, numpy as np
+import os, librosa, soundfile as sf, numpy as np, subprocess, tempfile
 
 # Define color codes for print messages
 class bcolors:
@@ -59,3 +59,32 @@ def apply_fadeout(audio, sr, fade_duration=50, curve_type='exp'):
     audio[-fade_duration_samples:] *= fade_curve
     
     return audio
+
+def extract_metadata(input_file):
+    # this command will extract the comment metadata from the input file
+    # -show_entries format_tags=comment will show the comment metadata
+    # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
+    command = [
+        'ffprobe',  input_file, '-v', 'error', '-show_entries', 'format_tags=comment', '-of', 'default=noprint_wrappers=1:nokey=1',
+    ]
+    output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+    if 'not found' in output:
+        print(f'{bcolors.RED}ffmpeg is not installed. Please install it first.{bcolors.ENDC}')
+        return None
+    if output:
+        # print(f'\n{bcolors.GREEN}{"Printing:" }' +metadata[0].split(':')[-1].strip())
+        return output
+    return None
+
+def write_metadata(input_file, comment):
+    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+        # this command will copy the input file to a temporary file and add the comment to it
+        # -y option will overwrite the original file
+        # codec copy will copy the audio stream without re-encoding it
+        command = [
+            'ffmpeg', '-y', '-i', input_file, '-metadata', f'comment={comment}', '-codec', 'copy', tmp_file.name
+        ]
+        subprocess.run(command)
+
+        # Rename the temporary file to the original file
+        os.replace(tmp_file.name, input_file)

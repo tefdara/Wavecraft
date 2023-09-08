@@ -46,11 +46,14 @@ class OnsetDetector:
                 raise ValueError('Invalid decomposition type.')
         
         onsets = self.detect_onsets(y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax)
-        # Print the detected onsets (in samples)
-        print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset frames: {onsets}{bcolors.ENDC}')
         onset_times = librosa.frames_to_time(onsets, sr=sr, hop_length=self.args.hop_size)
+        segment_lengths = np.diff(onset_times)
+        print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets:{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onset frames: {onsets}{bcolors.ENDC}')
         print(f'{bcolors.CYAN}Onset times: {onset_times}{bcolors.ENDC}\n')
+        # Compute the segment lengths
+        print(f'{bcolors.GREEN}Total of {len(segment_lengths)} segments{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Segment lengths (in seconds): {segment_lengths}{bcolors.ENDC}\n')
         return onsets
 
 

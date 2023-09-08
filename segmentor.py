@@ -3,7 +3,7 @@ import os, sys
 import librosa
 import argparse
 import soundfile as sf
-from utils import bcolors, apply_fadeout as fade
+from utils import bcolors, apply_fadeout as fade, extract_metadata, write_metadata
 from onset_detector import OnsetDetector
 from beat_detector import BeatDetector
 import asyncio
@@ -12,6 +12,7 @@ class Segmentor:
         self.args = args
         self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
+        self.metadata = extract_metadata(self.args.input_file)
 
     def render_segments(self, y, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
@@ -24,14 +25,16 @@ class Segmentor:
             # skip segments that are too short
             segment_length = len(segment) / self.args.sample_rate
             if segment_length < self.args.min_length:
-                print(f'{bcolors.YELLOW}Skipping segment {i} because it\'s too short{bcolors.ENDC} : {segment_length}s')
+                print(f'{bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{bcolors.ENDC} : {segment_length}s')
                 continue
             count += 1
             faded_seg = fade(segment, self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
             segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0]+f'_{count}.wav')
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
-            sf.write(segment_path, faded_seg, self.args.sample_rate, format='WAV', subtype='FLOAT')
+            sf.write(segment_path, faded_seg, self.args.sample_rate, format='WAV', subtype='PCM_24')
+            if self.metadata:
+                write_metadata(segment_path, self.metadata)
         
         print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
 
