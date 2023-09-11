@@ -6,8 +6,9 @@ import asyncio
 import traceback
 import numpy as np
 import sklearn.decomposition
-from utils import render_components, render_hpss, bcolors
+from utils import bcolors, Utils
 
+utils = Utils()
 class Decomposer:
     def __init__(self, input_file, method, n_components=4, render=False, render_path=None, output_file_harmonic=None, output_file_percussive=None, sample_rate=48000):
         self.input_file = input_file
@@ -34,7 +35,7 @@ class Decomposer:
 
             print(f'{bcolors.GREEN}Decomposed the signal into {self.n_components} components.{bcolors.ENDC}')
             print(f'{bcolors.YELLOW}Rendering components to {self.render_path}...{bcolors.ENDC}')
-            render_components(comps, acts, sr, self.render_path)
+            utils.render_components(comps, acts, sr, self.render_path)
 
         elif self.method == 'hpss':
             y_harmonic, y_percussive = await self._decompose_hpss(y)
@@ -44,7 +45,7 @@ class Decomposer:
                 return
             print(f'{bcolors.GREEN}Decomposed the signal into harmonic and percussive components.{bcolors.ENDC}')
             print(f'{bcolors.YELLOW}Rendering components to {self.render_path}...{bcolors.ENDC}')
-            render_hpss(y_harmonic, y_percussive, self.render_path)
+            utils.render_hpss(y_harmonic, y_percussive, self.render_path)
 
         elif self.method == 'sklearn':
             scomps, sacts = await self._decompose_sk(y, n_components=self.n_components)
@@ -54,7 +55,7 @@ class Decomposer:
                 return
             print(f'{bcolors.GREEN}Decomposed the signal into {self.n_components} components.{bcolors.ENDC}')
             print(f'{bcolors.YELLOW}Rendering components to {self.render_path}...{bcolors.ENDC}')
-            render_components(scomps, sacts, sr, self.render_path)
+            utils.render_components(scomps, sacts, sr, self.render_path)
 
     async def _decompose(self, y, n_components=4, spectogram=None, n_fft=1024, hop_length=512, render_path=None):
         if spectogram is None:

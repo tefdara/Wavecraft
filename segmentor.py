@@ -3,38 +3,45 @@ import os, sys
 import librosa
 import argparse
 import soundfile as sf
-from utils import bcolors, apply_fadeout as fade, extract_metadata, write_metadata
+from utils import bcolors, Utils
 from onset_detector import OnsetDetector
 from beat_detector import BeatDetector
 import asyncio
+
+utils = Utils()
 class Segmentor:
     def __init__(self, args):
         self.args = args
         self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
-        self.metadata = extract_metadata(self.args.input_file)
+        self.metadata = utils.extract_metadata(self.args.input_file, self.args)
+            
+        print (self.metadata)
 
     def render_segments(self, y, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
+        y_m, sr_m = sf.read(self.args.input_file)
         segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
         for i in range(len(segments) - 1):
             start_sample = segments[i]
             end_sample = segments[i + 1]
-            segment = y[start_sample:end_sample]
+            segment = y_m[start_sample:end_sample]
             # skip segments that are too short
             segment_length = len(segment) / self.args.sample_rate
             if segment_length < self.args.min_length:
                 print(f'{bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{bcolors.ENDC} : {segment_length}s')
                 continue
             count += 1
-            faded_seg = fade(segment, self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
+            faded_seg = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
+            faded_seg = utils.filter(faded_seg, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
+            normalised_seg = utils.normalise_audio(faded_seg, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0]+f'_{count}.wav')
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
-            sf.write(segment_path, faded_seg, self.args.sample_rate, format='WAV', subtype='PCM_24')
+            sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
             if self.metadata:
-                write_metadata(segment_path, self.metadata)
+                utils.write_metadata(segment_path, self.metadata)
         
         print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
 
@@ -67,7 +74,7 @@ class Segmentor:
                 segment = y[start_sample:end_sample]
 
                 # Adding fade-in and fade-out effects
-                segment = fade(segment, sr, fade_duration=self.args.fade_duration)
+                segment = utils.fade_io(segment, sr, fade_duration=self.args.fade_duration)
                 segment_path = os.path.join(output_folder, f"segment_{i}.wav")
                 sf.write(segment_path, segment, sr, format='WAV', subtype='FLOAT')
                 
@@ -102,17 +109,27 @@ class Segmentor:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Split audio files based on segments from a text file.")
     parser.add_argument("-i", "--input-file", type=str, help="Path to the audio file (wav, aif, aiff).", required=True)
-    parser.add_argument("-it", "--input-text", type=str, help="The text file containing the segmentation data. Defaults to the nameofaudio.txt", required=False)
+    parser.add_argument("-it", "--input-text", type=str, required=False,
+                        help="The text file containing the segmentation data. Defaults to the nameofaudio.txt")
     parser.add_argument("-o", "--output-directory", type=str, default=None, help="Path to the output directory. Optional.", required=False)
-    parser.add_argument("-m", "--segmentation-method", type=str, choices=["onset", "beat", "text"], help="Segmentation method to use.", required=True)
+    parser.add_argument("-m", "--segmentation-method", type=str, choices=["onset", "beat", "text"], required=False, default="onset",
+                        help="Segmentation method to use.")
     parser.add_argument("-st", "--save-txt", action='store_true', help="Save segment times to a text file.")
     parser.add_argument("-ml", "--min-length", type=float, default=0.1, help="Minimum length of a segment in seconds. Default is 0.1s.\
                         anything shorter won't be used", required=False)
-    parser.add_argument("-f", "--fade-duration", type=int, default=50, help="Duration in ms for fade in and out. Default is 50ms.", required=False)
+    parser.add_argument("-f", "--fade-duration", type=int, default=20, help="Duration in ms for fade in and out. Default is 50ms.", required=False)
     parser.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fade in and out. Default is exponential.", required=False)
-    
-    parser.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components, before computing segments.", required=False)
+    parser.add_argument("-ff", "--filter-frequency", type=int, default=40, 
+                        help="Frequency to use for the high-pass filter. Default is 40 Hz. Set to 0 to disable", required=False)
+    parser.add_argument("-ft", "--filter-type", type=str, choices=['high', 'low'], default="high", 
+                        help="Type of filter to use. Default is high-pass.", required=False)
+    parser.add_argument("-nl", "--normalisation-level", type=float, default=-3, required=False,
+                        help="Normalisation level, default is -3 db.")
+    parser.add_argument("-nm", "--normalisation-mode", type=str, default="peak", choices=["peak", "rms", "loudness"], 
+                        help="Normalisation mode; default is RMS.", required=False)
+    parser.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], required=False,
+                        help="Decompose the signal into harmonic and percussive components, before computing segments.")
     parser.add_argument("-k", type=int, default=5, help="Number of beat clusters to detect. Default is 5.", required=False)
     parser.add_argument("--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
     parser.add_argument("--fmin", type=float, default=20, help="Minimum frequency. Default is 27.5.", required=False)
@@ -125,7 +142,6 @@ if __name__ == "__main__":
     # parser.add_argument("--segment-times", type=str, default=None, help="Segment times in seconds separated by commas. Optional.", required=False)
 
     args = parser.parse_args()
-
     segmentor = Segmentor(args)
     segmentor.main()
     

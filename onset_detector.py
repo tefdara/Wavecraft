@@ -6,7 +6,7 @@ import soundfile as sf
 import numpy as np
 import traceback
 import asyncio
-from utils import apply_fadeout as fade, bcolors
+from utils import bcolors
 
 
 class OnsetDetector:
@@ -49,11 +49,25 @@ class OnsetDetector:
         onset_times = librosa.frames_to_time(onsets, sr=sr, hop_length=self.args.hop_size)
         segment_lengths = np.diff(onset_times)
         print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets:{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset frames: {onsets}{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset times: {onset_times}{bcolors.ENDC}\n')
+        # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
+        if len(onsets) > 10:
+            onsets_c = [onsets[0], onsets[1], onsets[2], onsets[-3], onsets[-2], onsets[-1]]
+            onset_times_c = [onset_times[0], onset_times[1], onset_times[2], onset_times[-3], onset_times[-2], onset_times[-1]]
+            segment_lengths_c = [segment_lengths[0], segment_lengths[1], segment_lengths[2], segment_lengths[-3], segment_lengths[-2], segment_lengths[-1]]
+            # round the values to 3 decimal places
+            onsets_c = [round(x, 3) for x in onsets_c]
+            onset_times_c = [round(x, 3) for x in onset_times_c]
+            segment_lengths_c = [round(x, 3) for x in segment_lengths_c]
+            onsets_c.insert(3, '...')
+            onset_times_c.insert(3, '...')
+            segment_lengths_c.insert(3, '...')
+        # if the number of onsets is less than 10, just show all of them
+        # else show the first 3 and last 3 onsets with ... in between
+        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 10 else onsets}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 10 else onset_times}{bcolors.ENDC}')
         # Compute the segment lengths
-        print(f'{bcolors.GREEN}Total of {len(segment_lengths)} segments{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Segment lengths (in seconds): {segment_lengths}{bcolors.ENDC}\n')
+        print(f'\n{bcolors.GREEN}Total of {len(segment_lengths)} segments{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 10 else segment_lengths}{bcolors.ENDC}')
         return onsets
 
 
