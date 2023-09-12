@@ -15,6 +15,8 @@ class Segmentor:
         self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         self.metadata = utils.extract_metadata(self.args.input_file, self.args)
+        self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0])
+        
             
     def render_segments(self, y, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
@@ -34,28 +36,36 @@ class Segmentor:
             faded_seg = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
             faded_seg = utils.filter(faded_seg, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
             normalised_seg = utils.normalise_audio(faded_seg, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
-            segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0]+f'_{count}.wav')
+            segment_path = self.base_segment_path+f'_{count}.wav'
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
             sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
             utils.write_metadata(segment_path, self.metadata)
 
-        if not os.path.exists(os.path.join(self.args.output_directory,'_seg_metadata.json')):
-            utils.export_json(self.metadata, self.args.output_directory, data_type='seg_metadata')
+        utils.export_json(self.metadata, self.base_segment_path, data_type='seg_metadata')
                 
         
         print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
 
 
     def save_segments_as_txt(self, onsets):
-        with open(os.path.join(self.args.output_directory, 'segments.txt'), 'w') as file:
+        print(f'\n{bcolors.GREEN}Saving segments as text file...{bcolors.ENDC}')
+        text_file_path = self.base_segment_path + '_segments.txt'
+        with open (text_file_path, 'w') as file:
             for i in range(len(onsets) - 1):
                 start_sample = onsets[i]
                 end_sample = onsets[i + 1]
-                start_time = start_sample / self.args.sample_rate
-                end_time = end_sample / self.args.sample_rate
-                file.write(f'{start_time} {end_time}\n')
-
+                # convert the sample indices to time in seconds
+                # round the values to 6 decimal places but make sure there is at least 6 decimal places and add 0s if necessary
+                start_time = round(librosa.samples_to_time(start_sample, sr=self.args.sample_rate), 6)
+                start_time = f'{start_time:.6f}'
+                end_time = round(librosa.samples_to_time(end_sample, sr=self.args.sample_rate), 6)
+                end_time = f'{end_time:.6f}'
+                # add a tab character between the start and end times
+                file.write(f'{start_time}\t{end_time}\n')
+        
+        print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
+        
     def segment_using_txt(self, audio_path, txt_path, output_folder, file_format):
         
         y, sr = librosa.load(audio_path, sr=None)

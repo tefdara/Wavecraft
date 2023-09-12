@@ -153,7 +153,9 @@ class Utils:
         command = [
             'ffprobe',  input_file, '-v', 'quiet', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
         ]
-        output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
+        output, _ = process.communicate()
+        # output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
         
         source_metadata = {}
         source_metadata['source_file_name'] = source_file_name
@@ -200,9 +202,23 @@ class Utils:
             data = json.load(file)
             return data
     def export_json(self, data, output_path, data_type='metadata'):
-        output_file = os.path.join(output_path, f'_{data_type}.json')
+        data = data.replace('\n', ',')
+        # convert to a dict
+        data_dict = {}
+        data_dict['id'] = os.path.basename(output_path)
+        data = data.split(',')
+        for item in data:
+            item = item.split(':')
+            data_dict[item[0].strip()] = item[1].strip()
+        # data = dict(item.split(":") for item in data.split(","))
+        output_file = output_path+f'_{data_type}.json'
+        if os.path.exists(output_file):
+            print(f'{bcolors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
+        else:
+            print(f'{bcolors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
         with open(output_file, 'w') as file:
-            json.dump(data, file, indent=4)
+            json.dump(data_dict, file, indent=4)
+        
     def trim(slef, y, fft_size, hop_size):
         yt, index = librosa.effects.trim(y, frame_length=fft_size, hop_length=hop_size)
         return yt
