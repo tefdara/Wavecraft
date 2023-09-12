@@ -1,4 +1,3 @@
-```markdown
 # Wave-Craft
 Audio segmentation, decomposition and more...
 
@@ -52,6 +51,5 @@ This will apply a high-pass filter to the audio file and save the result in the 
 Note that some operations may require additional arguments. Use the `--help` option with `wave_craft.py` and the operation name to see the available options for each operation.
 
 This is a work in progress. I'll be updating and expanding it in the coming months. 
-```
 
 
