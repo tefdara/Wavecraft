@@ -173,10 +173,8 @@ class Utils:
         segmentation_metadata['seg_n_fft'] = args.n_fft
         segmentation_metadata['seg_method'] = args.segmentation_method
         segmentation_metadata['seg_source_separation'] = args.source_separation
-        print(f'{bcolors.YELLOW}Source metadata:{bcolors.ENDC}')
-        print(source_metadata)
-        print(f'{bcolors.YELLOW}Segmentation metadata:{bcolors.ENDC}')
-        print(segmentation_metadata)
+
+        # source_metadata.update(segmentation_metadata)
         return source_metadata, segmentation_metadata
 
     def write_metadata(self, input_file, comment):
@@ -194,12 +192,17 @@ class Utils:
             subprocess.run(command)
             # Rename the temporary file to the original file
             os.replace(tmp_file.name, input_file)
+        
             
     def load_json (self, input_file):
         # this command will extract the comment metadata from the input file
         with open (input_file, 'r') as file:
             data = json.load(file)
             return data
+    def export_json(self, data, output_path, data_type='metadata'):
+        output_file = os.path.join(output_path, f'_{data_type}.json')
+        with open(output_file, 'w') as file:
+            json.dump(data, file, indent=4)
     def trim(slef, y, fft_size, hop_size):
         yt, index = librosa.effects.trim(y, frame_length=fft_size, hop_length=hop_size)
         return yt

@@ -31,20 +31,21 @@ class WaveCraft:
             if self.args.operation == "segment":
                 print(f'{bcolors.YELLOW}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = Segmentor(self.args)
-            if self.args.operation == "onset":
+            elif self.args.operation == "onset":
                 print(f'{bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = OnsetDetector(self.args)
-            if self.args.operation == "beat":
+            elif self.args.operation == "beat":
                 print(f'{bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = BeatDetector(self.args)
-            if self.args.operation == "decomp":
+            elif self.args.operation == "decomp":
                 print(f'{bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = Decomposer(self.args)
             else:
                 processor = utils
                 self.misc = True
-            if not self.misc:
-                processor.main(self.args)   
+  
+            if self.misc == False:
+                processor.main()   
             else:
                 if self.args.operation == "wmeta":
                     print(f'{bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')

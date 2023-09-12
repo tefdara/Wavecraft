@@ -16,8 +16,6 @@ class Segmentor:
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         self.metadata = utils.extract_metadata(self.args.input_file, self.args)
             
-        print (self.metadata)
-
     def render_segments(self, y, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
         y_m, sr_m = sf.read(self.args.input_file)
@@ -40,8 +38,11 @@ class Segmentor:
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
             sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
-            if self.metadata:
-                utils.write_metadata(segment_path, self.metadata)
+            utils.write_metadata(segment_path, self.metadata)
+
+        if not os.path.exists(os.path.join(self.args.output_directory,'_seg_metadata.json')):
+            utils.export_json(self.metadata, self.args.output_directory, data_type='seg_metadata')
+                
         
         print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
 
