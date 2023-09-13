@@ -21,14 +21,18 @@ class Segmentor:
     def render_segments(self, y, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
         y_m, sr_m = sf.read(self.args.input_file)
-        segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+        segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate)
+        segments = librosa.time_to_samples(segment_times, sr=sr_m)
+        # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
         for i in range(len(segments) - 1):
             start_sample = segments[i]
             end_sample = segments[i + 1]
             segment = y_m[start_sample:end_sample]
+            # _, (start, end) = utils.trim(segment_y, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
+            # segment = y_m[start:end, :]
             # skip segments that are too short
-            segment_length = len(segment) / self.args.sample_rate
+            segment_length = len(segment) / sr_m
             if segment_length < self.args.min_length:
                 print(f'{bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{bcolors.ENDC} : {segment_length}s')
                 continue

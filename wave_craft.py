@@ -96,6 +96,8 @@ if __name__ == "__main__":
     segmentation_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fade in and out. Default is exponential.", required=False)
     segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.1.", required=False)
+    # trim silence max db 
+    segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=60, help="Trim silence from the beginning and end of the audio file. Default is 60 db.", required=False)
 
     
     # Create a group for decomposition arguments

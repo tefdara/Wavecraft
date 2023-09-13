@@ -219,9 +219,30 @@ class Utils:
         with open(output_file, 'w') as file:
             json.dump(data_dict, file, indent=4)
         
-    def trim(slef, y, fft_size, hop_size):
-        yt, index = librosa.effects.trim(y, frame_length=fft_size, hop_length=hop_size)
-        return yt
+    def trim(self, y, threshold=20, frame_length=2048, hop_length=512):
+        # Check if audio is stereo or mono
+        if len(y.shape) == 1:
+            yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
+            return yt, indices
+
+        elif y.shape[1] == 2:
+            # Trim the left channel
+            _, index_left = librosa.effects.trim(y[:, 0], top_db=threshold, frame_length=frame_length, hop_length=hop_length)
+
+            # Trim the right channel
+            _, index_right = librosa.effects.trim(y[:, 1], top_db=threshold, frame_length=frame_length, hop_length=hop_length)
+
+            # Use the maximum of the start indices and the minimum of the stop indices to keep the channels synchronized
+            start_idx = max(index_left[0], index_right[0])
+            end_idx = min(index_left[1], index_right[1])
+
+            # Extract synchronized trimmed audio based on the indices
+            yt_stereo = y[start_idx:end_idx, :]
+
+            return yt_stereo, (start_idx, end_idx)
+
+        else:
+            print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
     
     def check_format(self, file):
         return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']
