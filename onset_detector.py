@@ -15,23 +15,26 @@ class OnsetDetector:
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         
     def detect_onsets(self, y, sr, n_fft=1024, hop_length=512, n_mels=138, fmin=27.5, fmax=16000., lag=2, max_size=3):
+        # Based on a paper by Boeck and Widmer, 2013 (Maximum filter vibrato suppression for onset detection)
         mel_spectogram = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, fmin=fmin, fmax=fmax)
         o_env = librosa.onset.onset_strength(S=librosa.power_to_db(mel_spectogram, ref=np.max),
                                               sr=sr,
                                               hop_length=hop_length,
                                               lag=lag, max_size=max_size)
-        onsets = librosa.onset.onset_detect(onset_envelope=o_env, sr=sr, hop_length=hop_length, delta=self.args.onset_threshold, backtrack=True)
-
+        onsets = librosa.onset.onset_detect(onset_envelope=o_env, sr=sr, hop_length=hop_length, delta=self.args.onset_threshold)
+        rms = librosa.feature.rms(y=y, S=librosa.power_to_db(mel_spectogram, ref=np.max), frame_length=n_fft, hop_length=hop_length)
+        backtracked_onsets = librosa.onset.onset_backtrack(onsets, rms[0])
+        
         return onsets
 
 
     async def main(self):
-        # Based on a paper by Boeck and Widmer, 2013 (Maximum filter vibrato suppression for onset detection)
-        # Load an audio file
         y, sr = librosa.load(self.args.input_file, sr=self.args.sample_rate)
+        if sr != self.args.sample_rate:
+            print(f'{bcolors.YELLOW}Resampling from {self.args.sample_rate}Hz to {sr}Hz...{bcolors.ENDC}')
+    
         if self.args.hop_size == 512:
             self.args.hop_size = int(librosa.time_to_samples(1./200, sr=sr))
-            
         if self.args.source_separation is not None:
             # wait for the decomposition to finish
             from decomposer import Decomposer
@@ -48,9 +51,14 @@ class OnsetDetector:
         onsets = self.detect_onsets(y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax)
         onset_times = librosa.frames_to_time(onsets, sr=sr, hop_length=self.args.hop_size)
         segment_lengths = np.diff(onset_times)
+        
+        # calculate the total length and number of frames in the input file 
+        total_length = librosa.get_duration(y=y, sr=sr)
+        print(f'\n{bcolors.CYAN}Total length: {total_length}s{bcolors.ENDC}')
         print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets:{bcolors.ENDC}')
+
         # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
-        if len(onsets) > 10:
+        if len(onsets) > 15:
             onsets_c = [onsets[0], onsets[1], onsets[2], onsets[-3], onsets[-2], onsets[-1]]
             onset_times_c = [onset_times[0], onset_times[1], onset_times[2], onset_times[-3], onset_times[-2], onset_times[-1]]
             segment_lengths_c = [segment_lengths[0], segment_lengths[1], segment_lengths[2], segment_lengths[-3], segment_lengths[-2], segment_lengths[-1]]
@@ -63,11 +71,11 @@ class OnsetDetector:
             segment_lengths_c.insert(3, '...')
         # if the number of onsets is less than 10, just show all of them
         # else show the first 3 and last 3 onsets with ... in between
-        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 10 else onsets}{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 10 else onset_times}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 15 else onsets}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 15 else onset_times}{bcolors.ENDC}')
         # Compute the segment lengths
         print(f'\n{bcolors.GREEN}Total of {len(segment_lengths)} segments{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 10 else segment_lengths}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 15 else segment_lengths}{bcolors.ENDC}')
         return onsets
 
 

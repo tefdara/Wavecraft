@@ -10,6 +10,7 @@ class bcolors:
     RED = '\033[91m'
     ENDC = '\033[0m'
     CYAN = '\033[96m'
+    BLUE = '\033[94m'
 class Utils:
 
     def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
@@ -189,7 +190,7 @@ class Utils:
         comment = comment.replace(',', '')
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
             command = [
-                'ffmpeg', '-y', '-i', input_file, '-metadata', f'comment={comment}', '-codec', 'copy', tmp_file.name
+                'ffmpeg', '-v', 'quiet', '-y', '-i', input_file, '-metadata', f'comment={comment}', '-codec', 'copy', tmp_file.name
             ]
             subprocess.run(command)
             # Rename the temporary file to the original file
@@ -243,6 +244,19 @@ class Utils:
 
         else:
             print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
+            
+    def remove_silence(self, y, sr, top_db=20, frame_length=2048, hop_length=512):
+
+        # Set the minimum length of silence to detect (in seconds)
+        min_silence_length = 1.0
+
+        # Detect non-silent intervals
+        intervals = librosa.effects.split(y, top_db=top_db, hop_length=512, ref=np.max)
+
+        # Filter out intervals that are too short
+        intervals = [interval for interval in intervals if (interval[1]-interval[0])/sr >= min_silence_length]
+
+        return intervals
     
     def check_format(self, file):
         return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']

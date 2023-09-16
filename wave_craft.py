@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.9
 
-import os, sys, argparse
+import os, sys, argparse, numpy as np, librosa
 from utils import Utils, bcolors
 from segmentor import Segmentor
 from onset_detector import OnsetDetector
@@ -12,17 +12,20 @@ class WaveCraft:
     def __init__(self, args):
         self.args = args
         self.misc = False
-        self.files = []
+        self.files = []           
         if os.path.isdir(self.args.input_file):
+            self.input_dir = self.args.input_file
             for file in os.listdir(self.args.input_file):
                 if utils.check_format(file):
-                    self.files.append(os.path.join(self.args.input_file, file))
+                    self.files.append(os.path.join(self.input_dir, file))
+        # single file              
         else:
             if utils.check_format(self.args.input_file):
                 self.files.append(self.args.input_file)
-            else:
-                print(f'{bcolors.RED}Could not find any valid files!{bcolors.ENDC}')
-                sys.exit()
+        if len(self.files) == 0:
+            print(f'{bcolors.RED}Could not find any valid files!{bcolors.ENDC}')
+            sys.exit()
+        
 
     def main(self):
         
@@ -129,8 +132,8 @@ if __name__ == "__main__":
     metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False)
 
     # Create a group for other arguments
-    other_group = parser.add_argument_group('Low level')
-    other_group.add_argument("--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
+    other_group = parser.add_argument_group('Audio settings')
+    other_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
     other_group.add_argument("--fmin", type=float, default=20, help="Minimum frequency. Default is 27.5.", required=False)
     other_group.add_argument("--fmax", type=float, default=16000, help="Maximum frequency. Default is 16000", required=False)
     other_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)

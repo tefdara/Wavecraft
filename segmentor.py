@@ -12,27 +12,30 @@ utils = Utils()
 class Segmentor:
     def __init__(self, args):
         self.args = args
-        self.y, _ = librosa.load(self.args.input_file, sr=self.args.sample_rate)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         self.metadata = utils.extract_metadata(self.args.input_file, self.args)
         self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0])
         
             
-    def render_segments(self, y, segments):
+    def render_segments(self, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
         y_m, sr_m = sf.read(self.args.input_file)
-        segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate)
-        segments = librosa.time_to_samples(segment_times, sr=sr_m)
+        segment_frames = librosa.util.fix_frames(segments, x_min=0)
+        segment_times = librosa.frames_to_time(segment_frames, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+        segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
+        
         # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
-        for i in range(len(segments) - 1):
-            start_sample = segments[i]
-            end_sample = segments[i + 1]
+        for i in range(len(segment_samps) - 1):
+            start_sample = segment_samps[i]
+            end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
-            # _, (start, end) = utils.trim(segment_y, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
-            # segment = y_m[start:end, :]
+            
+            _, (start, end) = utils.trim(segment, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
+            segment = y_m[start:end, :]
+            print(f'{bcolors.BLUE}Segment {i+1} length: {len(segment) / sr_m}s{bcolors.ENDC}')
             # skip segments that are too short
-            segment_length = len(segment) / sr_m
+            segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:
                 print(f'{bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{bcolors.ENDC} : {segment_length}s')
                 continue
@@ -43,7 +46,7 @@ class Segmentor:
             segment_path = self.base_segment_path+f'_{count}.wav'
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
-            sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
+            sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             utils.write_metadata(segment_path, self.metadata)
 
         utils.export_json(self.metadata, self.base_segment_path, data_type='seg_metadata')
@@ -112,7 +115,7 @@ class Segmentor:
         else:
             os.makedirs(self.args.output_directory, exist_ok=True)
             if user_input.lower() == '1':
-                self.render_segments(self.y, segments)
+                self.render_segments(segments)
             elif user_input.lower() == '2':
                 self.save_segments_as_txt(segments)
 
