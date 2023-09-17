@@ -1,6 +1,6 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3
 
-import os, sys, argparse, numpy as np, librosa
+import os, sys, argparse
 from utils import Utils, bcolors
 from segmentor import Segmentor
 from onset_detector import OnsetDetector
@@ -32,16 +32,16 @@ class WaveCraft:
         for file in self.files:
             self.args.input_file = file
             if self.args.operation == "segment":
-                print(f'{bcolors.YELLOW}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{bcolors.YELLOW}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = Segmentor(self.args)
             elif self.args.operation == "onset":
-                print(f'{bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = OnsetDetector(self.args)
             elif self.args.operation == "beat":
-                print(f'{bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = BeatDetector(self.args)
             elif self.args.operation == "decomp":
-                print(f'{bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = Decomposer(self.args)
             else:
                 processor = utils
@@ -51,15 +51,15 @@ class WaveCraft:
                 processor.main()   
             else:
                 if self.args.operation == "wmeta":
-                    print(f'{bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                    print(f'\n{bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                     if(self.args.meta_file):
                         self.args.meta = utils.load_json(self.args.meta_file)
                     processor.write_metadata(self.args.input_file, self.args.meta)
                     if self.args.operation == "rmeta":
-                        print(f'{bcolors.YELLOW}Extracting metadata from {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                        print(f'\n{bcolors.YELLOW}Extracting metadata from {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                         processor.extract_metadata(self.args.input_file, self.args)
                     if self.args.operation == "hpf":
-                        print(f'{bcolors.YELLOW}Applying high-pass filter to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                        print(f'\n{bcolors.YELLOW}Applying high-pass filter to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                         processor.filter(self.args.input_file, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
                         
 
@@ -101,8 +101,8 @@ if __name__ == "__main__":
     segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.1.", required=False)
     # trim silence max db 
     segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=60, help="Trim silence from the beginning and end of the audio file. Default is 60 db.", required=False)
-
-    
+    segmentation_group.add_argument("-oe", "--onset-envelope", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chr', 'mfcc', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz', 'pf'], default="mel",\
+                        help="Onset envelope to use for onset detection. Default is mel (mel spectrogram). Choices are: mel (mel spectrogram), cqt (constant-Q transform), stft (short-time Fourier transform), cqt_chr (chroma constant-Q transform), mfcc (Mel-frequency cepstral coefficients), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features), pf (poly features).", required=False)
     # Create a group for decomposition arguments
     decomposition_group = parser.add_argument_group('Decomposition')
     decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False)

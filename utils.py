@@ -221,11 +221,13 @@ class Utils:
             json.dump(data_dict, file, indent=4)
         
     def trim(self, y, threshold=20, frame_length=2048, hop_length=512):
-        # Check if audio is stereo or mono
+        # margin = int(self.sample_rate * 0.1)
+        # y = y[margin:-margin]
+        # return librosa.effects.trim(
+        #     y, top_db=40, frame_length=1024, hop_length=256)[0]
         if len(y.shape) == 1:
             yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
             return yt, indices
-
         elif y.shape[1] == 2:
             # Trim the left channel
             _, index_left = librosa.effects.trim(y[:, 0], top_db=threshold, frame_length=frame_length, hop_length=hop_length)
@@ -244,19 +246,83 @@ class Utils:
 
         else:
             print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
-            
-    def remove_silence(self, y, sr, top_db=20, frame_length=2048, hop_length=512):
+    
+    def trim_after_last_silence(self, y, sr, top_db=-60.0, frame_length=2048, hop_length=512, silence_min_duration=0.3):
+        """
+        Trim audio after the last prolonged silence.
 
-        # Set the minimum length of silence to detect (in seconds)
-        min_silence_length = 1.0
+        Parameters:
+        - y (np.ndarray): Audio time series.
+        - sr (int): Sampling rate of the audio file.
+        - top_db (float): The threshold (in dB) below which the signal is regarded as silent.
+        - frame_length (int): The number of samples in each frame.
+        - hop_length (int): The number of samples between successive frames.
+        - silence_min_duration (float): The minimum duration of silence in seconds required for trimming.
 
-        # Detect non-silent intervals
-        intervals = librosa.effects.split(y, top_db=top_db, hop_length=512, ref=np.max)
+        Returns:
+        - y_trimmed (np.ndarray): The audio time series after trimming.
+        """
+        dur = len(y / sr)
+        if dur < silence_min_duration:
+            return y
+        # If stereo, convert to mono for analysis
+        if len(y.shape) > 1 and y.shape[1] == 2:
+            y_mono = np.mean(y, axis=1)
+        else:
+            y_mono = y
 
-        # Filter out intervals that are too short
-        intervals = [interval for interval in intervals if (interval[1]-interval[0])/sr >= min_silence_length]
+        # Calculate amplitude envelope
+        envelope = librosa.power_to_db(np.abs(librosa.stft(y_mono, n_fft=frame_length, hop_length=hop_length)), ref=np.max)
+        print(envelope.mean(axis=0))
+        # Detect where the envelope is below the threshold
+        silent_frames = np.where(envelope.mean(axis=0) < top_db)[0]
+        # If there are no silent frames, just return the original audio
+        if len(silent_frames) == 0:
+            return y
 
-        return intervals
+        # Group consecutive silent frames into silence periods
+        breaks = np.where(np.diff(silent_frames) > 1)[0]
+        silence_periods = np.split(silent_frames, breaks+1)
+
+        # If the last silence is long enough, trim everything after it
+        last_silence = silence_periods[-1]
+        if len(last_silence) * hop_length / sr > silence_min_duration:
+            trim_index = last_silence[0] * hop_length
+            y_trimmed = y[:trim_index]
+            return y_trimmed
+
+        return y
+    
+    def scientific_notation_to_float(self, array, precision=2):
+        
+        if isinstance(array, np.ndarray):
+            if array.size == 0:
+                return array    
+            arr=[]
+            for x in array:
+                arr.append('{:.2f}'.format(x))
+            return arr
+        # if its not an array then check to see if its a number 
+        elif isinstance(array, float):
+            if array == 0:
+                return 0
+            return '{:.2f}'.format(array)
+        else:
+            print(f'{bcolors.RED}Invalid input. Expected a numpy array or a float, got {type(array)}{bcolors.ENDC}')
+            return None
+
+    def random_crop(y, sr, duration):
+        assert (y.ndim <= 2)
+
+        target_len = sr * duration
+        y_len = y.shape[-1]
+        start = np.random.choice(range(np.maximum(1, y_len - target_len)), 1)[0]
+        end = start + target_len
+        if y.ndim == 1:
+            y = y[start:end]
+        else:
+            y = y[:, start:end]
+        return y
     
     def check_format(self, file):
         return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']

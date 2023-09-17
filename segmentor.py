@@ -19,20 +19,23 @@ class Segmentor:
             
     def render_segments(self, segments):
         print(f'\n{bcolors.GREEN}Rendering segments...{bcolors.ENDC}\n')
-        y_m, sr_m = sf.read(self.args.input_file)
-        segment_frames = librosa.util.fix_frames(segments, x_min=0)
-        segment_times = librosa.frames_to_time(segment_frames, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+        y_m, sr_m = sf.read(self.args.input_file, dtype='float32')
+        segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
         
         # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
-        for i in range(len(segment_samps) - 1):
-            start_sample = segment_samps[i]
-            end_sample = segment_samps[i + 1]
+        for i in range(len(segment_samps)):
+            if i == len(segment_samps) - 1:
+                # last segment
+                start_sample = segment_samps[i]
+                end_sample = len(y_m)
+            else:
+                start_sample = segment_samps[i]
+                end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
-            
-            _, (start, end) = utils.trim(segment, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
-            segment = y_m[start:end, :]
+            segment = utils.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size, silence_min_duration=0.5)
+            # segment, _ = utils.trim(segment, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             print(f'{bcolors.BLUE}Segment {i+1} length: {len(segment) / sr_m}s{bcolors.ENDC}')
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
@@ -46,7 +49,7 @@ class Segmentor:
             segment_path = self.base_segment_path+f'_{count}.wav'
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
             # Save segment to a new audio file
-            sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
+            sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
             utils.write_metadata(segment_path, self.metadata)
 
         utils.export_json(self.metadata, self.base_segment_path, data_type='seg_metadata')
@@ -155,6 +158,8 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.1.", required=False)
     parser.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
     parser.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
+    # parser.add_argument("-oe", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chr', 'mfcc', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz', 'pf'], default="mel",\
+    #                     help="Onset envelope to use for onset detection. Default is mel (mel spectrogram). Choices are: mel (mel spectrogram), cqt (constant-Q transform), stft (short-time Fourier transform), cqt_chr (chroma constant-Q transform), mfcc (Mel-frequency cepstral coefficients), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features), pf (poly features).", required=False)
 
     # text segmentation parameters
     # parser.add_argument("--segment-times", type=str, default=None, help="Segment times in seconds separated by commas. Optional.", required=False)
