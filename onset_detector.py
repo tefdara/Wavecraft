@@ -106,7 +106,6 @@ class OnsetDetector:
                                                   lag=lag, max_size=max_size)
             
         onsets = librosa.onset.onset_detect(onset_envelope=o_env, sr=sr, hop_length=hop_length, backtrack=True, delta=self.args.onset_threshold)
-        
         return onsets
 
     async def main(self):
@@ -146,8 +145,8 @@ class OnsetDetector:
         segment_lengths = np.diff(segs)
         # segment_lengths
         
-        print(f'\n{bcolors.CYAN}Total length: {total_length}s{bcolors.ENDC}')
         print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets:{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Total length: {total_length}s{bcolors.ENDC}')
 
         # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
         if len(onsets) > 15:
@@ -161,13 +160,11 @@ class OnsetDetector:
             onsets_c.insert(3, '...')
             onset_times_c.insert(3, '...')
             segment_lengths_c.insert(3, '...')
-        # if the number of onsets is less than 10, just show all of them
+        # if the number of onsets is less than 12, just show all of them
         # else show the first 3 and last 3 onsets with ... in between
-        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 15 else onsets}{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 15 else onset_times}{bcolors.ENDC}')
-        # Compute the segment lengths
-        print(f'\n{bcolors.GREEN}Total of {len(segment_lengths)} segments{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 15 else segment_lengths}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 12 else onsets}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 12 else onset_times}{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 12 else segment_lengths}{bcolors.ENDC}\n')
         return onsets
 
 

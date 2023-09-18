@@ -32,7 +32,7 @@ class WaveCraft:
         for file in self.files:
             self.args.input_file = file
             if self.args.operation == "segment":
-                print(f'\n{bcolors.YELLOW}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{bcolors.MAGENTA}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
                 processor = Segmentor(self.args)
             elif self.args.operation == "onset":
                 print(f'\n{bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')

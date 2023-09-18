@@ -13,7 +13,6 @@ class Segmentor:
     def __init__(self, args):
         self.args = args
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
-        self.metadata = utils.extract_metadata(self.args.input_file, self.args)
         self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0])
         
             
@@ -22,6 +21,7 @@ class Segmentor:
         y_m, sr_m = sf.read(self.args.input_file, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
+        prev_metadata = utils.extract_metadata(self.args.input_file, self.args)
         
         # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
@@ -34,25 +34,27 @@ class Segmentor:
                 start_sample = segment_samps[i]
                 end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
-            segment = utils.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size, silence_min_duration=0.5)
+            # fade once before trimming to get rid of clicks at the beginning and end of the segment
+            segment = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=50, curve_type=self.args.curve_type)
+            segment = utils.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # segment, _ = utils.trim(segment, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
-            print(f'{bcolors.BLUE}Segment {i+1} length: {len(segment) / sr_m}s{bcolors.ENDC}')
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:
                 print(f'{bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{bcolors.ENDC} : {segment_length}s')
-                continue
+                continue 
             count += 1
             faded_seg = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
             faded_seg = utils.filter(faded_seg, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
             normalised_seg = utils.normalise_audio(faded_seg, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
             print(f'{bcolors.CYAN}Saving segment {count} to {segment_path}.{bcolors.ENDC}')
+            print(f'{bcolors.BLUE}length: {segment_length}s{bcolors.ENDC}')
             # Save segment to a new audio file
             sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
-            utils.write_metadata(segment_path, self.metadata)
+            utils.write_metadata(segment_path, prev_metadata)
 
-        utils.export_json(self.metadata, self.base_segment_path, data_type='seg_metadata')
+        utils.export_json(prev_metadata, self.base_segment_path, data_type='seg_metadata')
                 
         
         print(f'\n[{bcolors.GREEN}Done{bcolors.ENDC}]\n')
@@ -107,7 +109,7 @@ class Segmentor:
             detector = BeatDetector(self.args)
             segments = detector.main()
         
-        user_input = input(f'Choose an action:\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
+        user_input = input(f'{bcolors.GREEN}Choose an action:{bcolors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
         if user_input.lower() == '3':
             sys.exit()
 

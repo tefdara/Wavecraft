@@ -8,9 +8,11 @@ class bcolors:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
-    ENDC = '\033[0m'
     CYAN = '\033[96m'
     BLUE = '\033[94m'
+    MAGENTA = '\033[97m'
+    GREY = '\033[37m'
+    ENDC = '\033[0m'
 class Utils:
 
     def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
@@ -41,7 +43,7 @@ class Utils:
         # convert fade duration to samples
         fade_duration_samples = int(fade_duration * sr / 1000)
         
-        # If fade_duration_samples is larger than the segment, we should adjust it
+        # If fade_duration_samples is larger than the segment
         fade_duration_samples = min(fade_duration_samples, audio.shape[0])
         
         # switch between different curve types
@@ -165,6 +167,9 @@ class Utils:
         source_metadata['source_channels'] = output.splitlines()[1]
         source_metadata['source_bit_depth'] = output.splitlines()[2]
         segmentation_metadata = {}
+        segmentation_metadata['seg_method'] = args.segmentation_method
+        if(args.segmentation_method == 'onset'):
+            segmentation_metadata['seg_onset_envelope'] = args.onset_envelope
         segmentation_metadata['seg_normalise_mode'] = args.normalisation_mode
         segmentation_metadata['seg_normalise_level'] = args.normalisation_level
         segmentation_metadata['seg_fade_duration'] = args.fade_duration
@@ -174,7 +179,6 @@ class Utils:
         segmentation_metadata['seg_onset_threshold'] = args.onset_threshold
         segmentation_metadata['seg_hop_size'] = args.hop_size
         segmentation_metadata['seg_n_fft'] = args.n_fft
-        segmentation_metadata['seg_method'] = args.segmentation_method
         segmentation_metadata['seg_source_separation'] = args.source_separation
 
         # source_metadata.update(segmentation_metadata)
@@ -247,7 +251,7 @@ class Utils:
         else:
             print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
     
-    def trim_after_last_silence(self, y, sr, top_db=-60.0, frame_length=2048, hop_length=512, silence_min_duration=0.3):
+    def trim_after_last_silence(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
         """
         Trim audio after the last prolonged silence.
 
@@ -262,9 +266,10 @@ class Utils:
         Returns:
         - y_trimmed (np.ndarray): The audio time series after trimming.
         """
-        dur = len(y / sr)
-        if dur < silence_min_duration:
-            return y
+        dur = len(y) / sr
+        silence_min_duration = dur * 0.1
+        # if dur < silence_min_duration:
+        #     return y 
         # If stereo, convert to mono for analysis
         if len(y.shape) > 1 and y.shape[1] == 2:
             y_mono = np.mean(y, axis=1)
@@ -273,7 +278,6 @@ class Utils:
 
         # Calculate amplitude envelope
         envelope = librosa.power_to_db(np.abs(librosa.stft(y_mono, n_fft=frame_length, hop_length=hop_length)), ref=np.max)
-        print(envelope.mean(axis=0))
         # Detect where the envelope is below the threshold
         silent_frames = np.where(envelope.mean(axis=0) < top_db)[0]
         # If there are no silent frames, just return the original audio
@@ -324,5 +328,11 @@ class Utils:
             y = y[:, start:end]
         return y
     
+    def batch_rename(self, input_dir, output_dir, prefix, extension):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        for i, file in enumerate(os.listdir(input_dir)):
+            os.rename(os.path.join(input_dir, file), os.path.join(output_dir, f'{prefix}_{i}.{extension}'))
+            
     def check_format(self, file):
         return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']
