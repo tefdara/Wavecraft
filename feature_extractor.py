@@ -5,6 +5,7 @@ import os
 import json
 import argparse
 import utils
+from sklearn.decomposition import PCA
 
 class Extractor:
     def __init__(self, args):
@@ -37,15 +38,21 @@ class Extractor:
             M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=self.args.n_mels)
             
             # spectral features
+            pca = PCA(n_components=12)  # the number of principal components to extract
+            mel_spec_pca = pca.fit_transform(M.T).T 
             chroma_stft = librosa.feature.chroma_stft(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             chroma_cqt = librosa.feature.chroma_cqt(C=C, sr=self.args.sample_rate, hop_length=self.args.hop_size)
-            chroma_cens = librosa.feature.chroma_cens(C=C,sr=self.args.sample_rate, hop_length=self.args.hop_size)
             rms = librosa.feature.rms(S=S_M, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
             spec_bw = librosa.feature.spectral_bandwidth(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+            spec_bw_delta = librosa.feature.delta(spec_bw, order=2)
             spec_cent = librosa.feature.spectral_centroid(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            spec_cent_delta = librosa.feature.delta(spec_cent, order=2)
             spec_contrast = librosa.feature.spectral_contrast(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            spec_contrast_delta = librosa.feature.delta(spec_contrast, order=2)
             rolloff = librosa.feature.spectral_rolloff(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            rolloff_delta = librosa.feature.delta(rolloff, order=2)
             zcr = librosa.feature.zero_crossing_rate(self.args.y, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
+            zcr_delta = librosa.feature.delta(zcr, order=2)
             mfcc = librosa.feature.mfcc(S=librosa.power_to_db(M), sr=self.args.sample_rate)
             mfcc_delta = librosa.feature.delta(mfcc, order=2)
             poly_features = librosa.feature.poly_features(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
@@ -55,32 +62,43 @@ class Extractor:
             onset_env = librosa.onset.onset_strength(S=S_P, sr=self.args.sample_rate, lag=2)
             tempogram = librosa.feature.tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
             # tempo = librosa.feature.tempo(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
-            fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
-            tempo, beats = librosa.beat.beat_track(y=self.args.y, sr=self.args.sample_rate, hop_length=int(self.args.hop_size*0.1))
-            print(beats[0])
-            tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, bpm=tempo, hop_length=self.args.hop_size)
+            # fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
+            # tempo, beats = librosa.beat.beat_track(y=self.args.y, sr=self.args.sample_rate, hop_length=int(self.args.hop_size*0.25))
+            tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             
+            features = {
+                'mel_spec_stdv': mel_spec_pca, # 'mel_spec': M,
+                'chroma_stft': chroma_stft,
+                'rms': rms,
+                'spec_bw': spec_bw,
+                'spec_bw_delta': spec_bw_delta,
+                'spec_cent': spec_cent,
+                'spec_cent_delta': spec_cent_delta,
+                'spec_contrast': spec_contrast,
+                'spec_contrast_delta': spec_contrast_delta,
+                'rolloff': rolloff,
+                'rolloff_delta': rolloff_delta,
+                'zcr': zcr,
+                'zcr_delta': zcr_delta,
+                'mfcc': mfcc,
+                'mfcc_delta': mfcc_delta,
+                'poly_features': poly_features,
+                'tonnetz': tonnetz,
+                'tempogram_ratio': tempogram_ratio
+            }
             
-            results['chroma_stft_mean'] = np.mean(chroma_stft, axis=1)
-            results['chroma_cqt_mean'] = np.mean(np.real(chroma_cqt), axis=1)
-            results['chroma_cens_mean'] = np.mean(np.real(chroma_cens), axis=1)
-            results['rms_mean'] = np.mean(rms, axis=1)
-            results['spectral_bandwidth_mean'] = np.mean(spec_bw, axis=1)
-            results['spec_cent_mean'] = np.mean(spec_cent, axis=1)
-            results['spec_contrast_mean'] = np.mean(spec_contrast, axis=1)
-            results['spec_rolloff_mean'] = np.mean(rolloff, axis=1)
-            results['zcr_mean'] = np.mean(zcr, axis=1)
-            results['mfcc_mean'] = np.mean(mfcc, axis=1)
-            results['mfcc_delta_mean'] = np.mean(mfcc_delta, axis=1)
-            results['poly_features_mean'] = np.mean(poly_features, axis=1)   
-            results['tonnetz_mean'] = np.mean(np.real(tonnetz), axis=1)
+            results = {}
+            results['duration'] = self.args.duration
             
-            results['tempogram_mean'] = np.mean(tempogram, axis=1)
-            results['beats'] = beats
-            # results['tempo'] = tempo
-            results['fourier_tempogram_mean'] = np.mean(np.real(fourier_tempogram), axis=1)
-            results['tempogram_ratio_mean'] = np.mean(tempogram_ratio, axis=1)
-            
+            for k, v in features.items():
+                stdv = np.round(np.std(v, axis=1), 8)
+                mean = np.round(np.mean(v, axis=1), 8)
+                if np.iscomplexobj(stdv):
+                    stdv = stdv.real
+                if np.iscomplexobj(mean):
+                    mean = mean.real
+                results[k+'_stdv'] = stdv.tolist()
+                results[k+'_mean'] = mean.tolist()
             
             # make everything JSON serializable
             for key in results:

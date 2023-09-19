@@ -297,12 +297,13 @@ def trim_after_last_silence(y, sr, top_db=-70.0, frame_length=2048, hop_length=5
     return y
 
 def scientific_notation_to_float(array, precision=2):
-    
+        
     if isinstance(array, np.ndarray):
         if array.size == 0:
             return array    
         arr=[]
         for x in array:
+            # use precision to format the number
             arr.append('{:.2f}'.format(x))
         return arr
     # if its not an array then check to see if its a number 
@@ -363,7 +364,6 @@ def adjust_anal_res(args):
 def flatten_dict(d):
     items = {}
     for k, v in d.items():
-        
         if isinstance(v, list):
             for idx, item in enumerate(v):
                 stat_type = k.split('_')[-1]
@@ -372,7 +372,8 @@ def flatten_dict(d):
                     idx = f'0{idx}'
                 indexed_key = f"{key_without_stat}_{idx}_{stat_type}"
                 items[indexed_key] = item
-        
+        else:
+            items[k] = v
     # make sure stats are represented in order of index
     items = {k: v for k, v in sorted(items.items(), key=lambda item: item[0])}        
     return items

@@ -21,12 +21,14 @@ class WaveCraft:
         self.n_mels = 128
         
         self.files = []
+        if self.args.input_file == '.':
+            self.args.input_file = os.getcwd()
         # check if dir is home dir
-        if self.args.input_file == "~":
-            print(f'{utils.bcolors.RED}You have selcted the home directory! This will include all the files on your machine.{utils.bcolors.ENDC}')
-            user_input = input(f'{utils.bcolors.GREEN}Are you sure you want to go ahead?:{utils.bcolors.ENDC}\n1) No\n2) Yes\n')
-            if user_input.lower() == '1':
-                sys.exit()           
+        if self.args.input_file == os.path.expanduser('~'):
+            print(f'\n{utils.bcolors.RED}You have selcted the home directory! Are you sure you want to go ahead?{utils.bcolors.ENDC}')
+            user_input = input(f'\n1) Yes\n2) No\n')
+            if user_input.lower() == '2':
+                sys.exit(1)           
         if os.path.isdir(self.args.input_file):
             self.input_dir = self.args.input_file
             for file in os.listdir(self.args.input_file):
@@ -45,8 +47,8 @@ class WaveCraft:
         for file in self.files:
             self.args.input_file = file
             self.args.y=librosa.load(self.args.input_file, sr=self.args.sample_rate)[0]
-            self.args.duration=len(self.args.y)/self.args.sample_rate
             self.args.num_samples = len(self.args.y)
+            self.args.duration = self.args.num_samples / self.args.sample_rate
             self.args.n_bins = 84
             self.args.num_frames = self.args.num_samples // self.args.hop_size
             self.args.window_length = 384
