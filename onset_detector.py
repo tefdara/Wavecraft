@@ -6,10 +6,9 @@ import soundfile as sf
 import numpy as np
 import traceback
 import asyncio
-from utils import bcolors, Utils
+import utils
 
 
-utils = Utils()
 class OnsetDetector:
     def __init__(self, args):
         self.args = args
@@ -17,7 +16,7 @@ class OnsetDetector:
     
     def compute_onsets(self, y, sr, hop_length=512, n_fft=2048, fmin=27.5, fmax=16000., lag=2, max_size=3, env_method='mel'):
         if env_method == 'mel': 
-            print(bcolors.YELLOW + 'Using mel spectrogram for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using mel spectrogram for onset detection.' + utils.bcolors.ENDC)
             mel_spectogram = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=138, fmin=fmin, fmax=fmax)
             S = librosa.power_to_db(mel_spectogram, ref=np.max)
             o_env = librosa.onset.onset_strength(S=S,
@@ -25,7 +24,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'rms':
-            print(bcolors.YELLOW + 'Using RMS for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using RMS for onset detection.' + utils.bcolors.ENDC)
             S = np.abs(librosa.stft(y=y))
             rms = librosa.feature.rms(S=S, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=rms[0],
@@ -33,7 +32,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cqt':
-            print(bcolors.YELLOW + 'Using CQT for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using CQT for onset detection.' + utils.bcolors.ENDC)
             cqt = librosa.cqt(y=y, sr=sr, hop_length=hop_length, fmin=fmin, n_bins=252, bins_per_octave=36)
             S = librosa.amplitude_to_db(cqt, ref=np.max)
             o_env = librosa.onset.onset_strength(S=S,
@@ -41,7 +40,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'stft':
-            print(bcolors.YELLOW + 'Using STFT for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using STFT for onset detection.' + utils.bcolors.ENDC)
             stft = librosa.stft(y=y, n_fft=n_fft, hop_length=hop_length)
             S = librosa.amplitude_to_db(stft, ref=np.max)
             o_env = librosa.onset.onset_strength(S=S,
@@ -49,56 +48,56 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cens':
-            print(bcolors.YELLOW + 'Using chroma cens for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using chroma cens for onset detection.' + utils.bcolors.ENDC)
             cens = librosa.feature.chroma_cens(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cens,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cqt_chr':
-            print(bcolors.YELLOW + 'Using CQT chroma for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using CQT chroma for onset detection.' + utils.bcolors.ENDC)
             cqt_chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cqt_chroma,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'mfcc':
-            print(bcolors.YELLOW + 'Using MFCC for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using MFCC for onset detection.' + utils.bcolors.ENDC)
             mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13, n_mels=138, fmin=fmin, fmax=fmax)
             o_env = librosa.onset.onset_strength(S=mfcc,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tmpg':
-            print(bcolors.YELLOW + 'Using tempogram for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using tempogram for onset detection.' + utils.bcolors.ENDC)
             tempogram = librosa.feature.tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'ftmpg':
-            print(bcolors.YELLOW + 'Using fourier tempogram for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using fourier tempogram for onset detection.' + utils.bcolors.ENDC)
             fourier_tempogram = librosa.feature.fourier_tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=fourier_tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tonnetz':
-            print(bcolors.YELLOW + 'Using tonal centroid features for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using tonal centroid features for onset detection.' + utils.bcolors.ENDC)
             tonnetz = librosa.feature.tonnetz(y=y, sr=sr, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=tonnetz,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'pf':
-            print(bcolors.YELLOW + 'Using poly features for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using poly features for onset detection.' + utils.bcolors.ENDC)
             poly_features = librosa.feature.poly_features(y=y, sr=sr, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=poly_features,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'zcr':
-            print(bcolors.YELLOW + 'Using zero-crossing rate for onset detection.' + bcolors.ENDC)
+            print(utils.bcolors.YELLOW + 'Using zero-crossing rate for onset detection.' + utils.bcolors.ENDC)
             zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=zcr,
                                                   sr=sr,
@@ -109,44 +108,44 @@ class OnsetDetector:
         return onsets
 
     async def main(self):
-        y, sr = librosa.load(self.args.input_file, sr=self.args.sample_rate)
-        if sr != self.args.sample_rate:
-            print(f'{bcolors.YELLOW}Loaded Sample rate is {sr}Hz!{bcolors.ENDC}')
-            print(f'{bcolors.YELLOW}It was resampled from {self.args.sample_rate}Hz to {sr}Hz. Something could have gone wrong.{bcolors.ENDC}')
+        # y, sr = librosa.load(self.args.input_file, sr=self.args.sample_rate)
+        # if sr != self.args.sample_rate:
+        #     print(f'{utils.bcolors.YELLOW}Loaded Sample rate is {sr}Hz!{utils.bcolors.ENDC}')
+        #     print(f'{utils.bcolors.YELLOW}It was resampled from {self.args.sample_rate}Hz to {sr}Hz. Something could have gone wrong.{utils.bcolors.ENDC}')
     
         if self.args.hop_size == 512:
-            self.args.hop_size = int(librosa.time_to_samples(1./200, sr=sr))
+            self.args.hop_size = int(librosa.time_to_samples(1./200, sr=self.args.sample_rate))
         if self.args.source_separation is not None:
             # wait for the decomposition to finish
             from decomposer import Decomposer
-            print(f'{bcolors.YELLOW}Decomposing the signal into harmonic and percussive components...{bcolors.ENDC}')
+            print(f'{utils.bcolors.YELLOW}Decomposing the signal into harmonic and percussive components...{utils.bcolors.ENDC}')
             decomposer = Decomposer(self.input_file, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input_file), 'components'))
-            H, P = await decomposer._decompose_hpss(y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            H, P = await decomposer._decompose_hpss(self.args.y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             if self.decompose == 'harmonic':
-                y = H
+                self.args.y = H
             elif self.decompose == 'percussive':
-                y = P
+                self.args.y = P
             else:
                 raise ValueError('Invalid decomposition type.')
         
-        onsets = self.compute_onsets(y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax, env_method=self.args.onset_envelope)
+        onsets = self.compute_onsets(self.args.y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax, env_method=self.args.onset_envelope)
         if len(onsets) == 0 or onsets is None:
-            print(f'{bcolors.RED}No onsets detected! Try to reduce the onset threshold with -t.{bcolors.ENDC}')
+            print(f'{utils.bcolors.RED}No onsets detected! Try to reduce the onset threshold with -t.{utils.bcolors.ENDC}')
             sys.exit(1)
             return
-        ot = librosa.frames_to_time(onsets, sr=sr, hop_length=self.args.hop_size)
+        ot = librosa.frames_to_time(onsets, sr=self.args.sample_rate, hop_length=self.args.hop_size)
         onset_times=[]
         for i in range(len(ot)):
             onset_times.append(ot[i])
             
-        total_length = round(librosa.get_duration(y=y, sr=sr),2)
-        segs = onset_times + [total_length]
+        # total_length = round(librosa.get_duration(y=y, sr=sr),2)
+        segs = onset_times + [self.args.duration]
         
         segment_lengths = np.diff(segs)
         # segment_lengths
         
-        print(f'\n{bcolors.GREEN}Detected {len(onsets)} onsets:{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Total length: {total_length}s{bcolors.ENDC}')
+        print(f'\n{utils.bcolors.GREEN}Detected {len(onsets)} onsets:{utils.bcolors.ENDC}')
+        print(f'{utils.bcolors.CYAN}Total length: {self.args.duration}s{utils.bcolors.ENDC}')
 
         # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
         if len(onsets) > 15:
@@ -162,9 +161,9 @@ class OnsetDetector:
             segment_lengths_c.insert(3, '...')
         # if the number of onsets is less than 12, just show all of them
         # else show the first 3 and last 3 onsets with ... in between
-        print(f'{bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 12 else onsets}{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 12 else onset_times}{bcolors.ENDC}')
-        print(f'{bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 12 else segment_lengths}{bcolors.ENDC}\n')
+        print(f'{utils.bcolors.CYAN}Onsets Frames: {onsets_c if len(onsets) > 12 else onsets}{utils.bcolors.ENDC}')
+        print(f'{utils.bcolors.CYAN}Onset times (sec): {onset_times_c if len(onsets) > 12 else onset_times}{utils.bcolors.ENDC}')
+        print(f'{utils.bcolors.CYAN}Segment lengths (sec): {segment_lengths_c if len(onsets) > 12 else segment_lengths}{utils.bcolors.ENDC}\n')
         return onsets
 
 
@@ -183,13 +182,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.verbose:
-        print(f'{bcolors.YELLOW}Verbose mode enabled.{bcolors.ENDC}')
+        print(f'{utils.bcolors.YELLOW}Verbose mode enabled.{utils.bcolors.ENDC}')
 
     onset_detector = OnsetDetector(args)
 
     try:
         asyncio.run(onset_detector.main())
     except Exception as e:
-        print(f'{bcolors.RED}Error: {type(e).__name__}! {e}{bcolors.ENDC}')
+        print(f'{utils.bcolors.RED}Error: {type(e).__name__}! {e}{utils.bcolors.ENDC}')
         traceback.print_exc()
         sys.exit(1)

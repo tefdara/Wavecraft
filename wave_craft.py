@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 
 import os, sys, argparse
-from utils import Utils, bcolors
+import librosa
+import utils
 from segmentor import Segmentor
 from onset_detector import OnsetDetector
 from beat_detector import BeatDetector
 from decomposer import Decomposer
-utils = Utils()
+from feature_extractor import Extractor
 
 class WaveCraft:
     def __init__(self, args):
         self.args = args
         self.misc = False
+        # store these as they will be adjusted for short signals
+        self.n_fft = args.n_fft
+        self.hop_size = args.hop_size
+        self.window_length = 384 # for use with rythm features, otherwise window length = n_fft
+        self.n_bins = 84
+        self.n_mels = 128
+        
         self.files = []           
         if os.path.isdir(self.args.input_file):
             self.input_dir = self.args.input_file
@@ -23,45 +31,60 @@ class WaveCraft:
             if utils.check_format(self.args.input_file):
                 self.files.append(self.args.input_file)
         if len(self.files) == 0:
-            print(f'{bcolors.RED}Could not find any valid files!{bcolors.ENDC}')
+            print(f'{utils.bcolors.RED}Could not find any valid files!{utils.bcolors.ENDC}')
             sys.exit()
         
-
     def main(self):
         
         for file in self.files:
             self.args.input_file = file
+            self.args.y=librosa.load(self.args.input_file, sr=self.args.sample_rate)[0]
+            self.args.duration=len(self.args.y)/self.args.sample_rate
+            self.args.num_samples = len(self.args.y)
+            self.args.n_bins = 84
+            self.args.num_frames = self.args.num_samples // self.args.hop_size
+            self.args.window_length = 384
+            self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels = utils.adjust_anal_res(self.args)
+            
             if self.args.operation == "segment":
-                print(f'\n{bcolors.MAGENTA}Segmenting {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{utils.bcolors.MAGENTA}Segmenting {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Segmentor(self.args)
+            elif self.args.operation == "extract":
+                print(f'\n{utils.bcolors.YELLOW}Extracting features from {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                processor = Extractor(self.args)
             elif self.args.operation == "onset":
-                print(f'\n{bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{utils.bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = OnsetDetector(self.args)
             elif self.args.operation == "beat":
-                print(f'\n{bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{utils.bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = BeatDetector(self.args)
             elif self.args.operation == "decomp":
-                print(f'\n{bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                print(f'\n{utils.bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Decomposer(self.args)
             else:
                 processor = utils
                 self.misc = True
   
             if self.misc == False:
-                processor.main()   
+                processor.main()
             else:
                 if self.args.operation == "wmeta":
-                    print(f'\n{bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
+                    print(f'\n{utils.bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                     if(self.args.meta_file):
                         self.args.meta = utils.load_json(self.args.meta_file)
                     processor.write_metadata(self.args.input_file, self.args.meta)
-                    if self.args.operation == "rmeta":
-                        print(f'\n{bcolors.YELLOW}Extracting metadata from {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
-                        processor.extract_metadata(self.args.input_file, self.args)
-                    if self.args.operation == "hpf":
-                        print(f'\n{bcolors.YELLOW}Applying high-pass filter to {os.path.basename(self.args.input_file)}...{bcolors.ENDC}')
-                        processor.filter(self.args.input_file, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
-                        
+                if self.args.operation == "rmeta":
+                    print(f'\n{utils.bcolors.YELLOW}Extracting metadata from {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                    processor.extract_metadata(self.args.input_file, self.args)
+                if self.args.operation == "hpf":
+                    print(f'\n{utils.bcolors.YELLOW}Applying high-pass filter to {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                    processor.filter(self.args.input_file, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
+            
+            self.args.n_fft = self.n_fft
+            self.args.hop_size = self.hop_size
+            self.args.window_length = self.window_length
+            self.args.n_bins = self.n_bins
+            self.args.n_mels = self.n_mels       
 
 
 
@@ -73,8 +96,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='Wave Craft', description="Split audio files based on segments from a text file.", 
                                      usage=usage +'\n'+help, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("operation", type=str, choices=["segment", "onset", "beat", "decomp", "hpf", "wmeta", "rmeta", "info"], 
-                    help="Operation to perform. Choices: segment, onset, beat, decomp, hpf, wmeta, info",
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "onset", "beat", "decomp", "hpf", "wmeta", "rmeta", "info"], 
+                    help="Operation to perform. Choices: segment:segmentaion, extract:feature extraction, onset:onset detection, beat:beat detection, decomp:decomposition, hpf:high-pass filter, wmeta:write metadata, rmeta:read metadata, info:file info",
                     metavar='operation',
                     nargs='?') 
     
