@@ -33,31 +33,39 @@ class Extractor:
         try:
             D = librosa.stft(self.args.y, n_fft=self.args.n_fft)
             S_P = np.abs(D)**2
-            S_M = np.abs(D)
-            C = librosa.cqt(y=self.args.y, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_bins=self.args.n_bins)
-            M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=self.args.n_mels)
+            S_M = librosa.magphase(D)[0]
+            rn_mels = 12
+            n_mels = max(rn_mels, self.args.n_mels)
+            M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=n_mels)
             
             # spectral features
-            pca = PCA(n_components=12)  # the number of principal components to extract
-            mel_spec_pca = pca.fit_transform(M.T).T 
             chroma_stft = librosa.feature.chroma_stft(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
-            chroma_cqt = librosa.feature.chroma_cqt(C=C, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             rms = librosa.feature.rms(S=S_M, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
+            
             spec_bw = librosa.feature.spectral_bandwidth(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
             spec_bw_delta = librosa.feature.delta(spec_bw, order=2)
+            
             spec_cent = librosa.feature.spectral_centroid(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             spec_cent_delta = librosa.feature.delta(spec_cent, order=2)
-            spec_contrast = librosa.feature.spectral_contrast(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            
+            spec_contrast = librosa.feature.spectral_contrast(y=self.args.y, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             spec_contrast_delta = librosa.feature.delta(spec_contrast, order=2)
+            
+            spec_flatness = librosa.feature.spectral_flatness(S=S_M, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
+            spec_flatness_delta = librosa.feature.delta(spec_flatness, order=2)
+            
             rolloff = librosa.feature.spectral_rolloff(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             rolloff_delta = librosa.feature.delta(rolloff, order=2)
+            
             zcr = librosa.feature.zero_crossing_rate(self.args.y, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
             zcr_delta = librosa.feature.delta(zcr, order=2)
+            
             mfcc = librosa.feature.mfcc(S=librosa.power_to_db(M), sr=self.args.sample_rate)
             mfcc_delta = librosa.feature.delta(mfcc, order=2)
-            poly_features = librosa.feature.poly_features(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
-            tonnetz = librosa.feature.tonnetz(y=self.args.y, sr=self.args.sample_rate, chroma=chroma_cqt)
             
+            poly_features = librosa.feature.poly_features(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+            tonnetz = librosa.feature.tonnetz(y=self.args.y, sr=self.args.sample_rate, chroma=chroma_stft)
+
             # rythm features
             onset_env = librosa.onset.onset_strength(S=S_P, sr=self.args.sample_rate, lag=2)
             tempogram = librosa.feature.tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
@@ -66,8 +74,17 @@ class Extractor:
             # tempo, beats = librosa.beat.beat_track(y=self.args.y, sr=self.args.sample_rate, hop_length=int(self.args.hop_size*0.25))
             tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             
+            
+            if M.shape[1] < rn_mels:
+                print("Warning: padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
+                pad_amount = rn_mels - M.shape[1]
+                M = np.pad(M, ((0, 0), (0, pad_amount)), mode='constant')
+
+            pca = PCA(n_components=12)
+            M_pca = pca.fit_transform(M.T).T
+            
             features = {
-                'mel_spec_stdv': mel_spec_pca, # 'mel_spec': M,
+                'mel_spec_stdv': M_pca, # 'mel_spec': M,
                 'chroma_stft': chroma_stft,
                 'rms': rms,
                 'spec_bw': spec_bw,
@@ -75,7 +92,9 @@ class Extractor:
                 'spec_cent': spec_cent,
                 'spec_cent_delta': spec_cent_delta,
                 'spec_contrast': spec_contrast,
-                'spec_contrast_delta': spec_contrast_delta,
+                'spec_contrast_delta': spec_contrast_delta, 
+                'spec_flatness': spec_flatness, 
+                'spec_flatness_delta': spec_flatness_delta,
                 'rolloff': rolloff,
                 'rolloff_delta': rolloff_delta,
                 'zcr': zcr,
@@ -83,8 +102,8 @@ class Extractor:
                 'mfcc': mfcc,
                 'mfcc_delta': mfcc_delta,
                 'poly_features': poly_features,
+                'tempogram_ratio': tempogram_ratio,
                 'tonnetz': tonnetz,
-                'tempogram_ratio': tempogram_ratio
             }
             
             results = {}
@@ -118,7 +137,7 @@ class Extractor:
                 # overwrite the stats with the new ones
                 for key in data['stats']:
                     if key in old_data['stats'] and old_data['stats'][key] == data['stats'][key]:
-                        print(utils.bcolors.YELLOW + "Warning: stats for " + key + " have not been updated as they are the same." + utils.bcolors.ENDC)
+                        # print(utils.bcolors.YELLOW + "Warning: stats for " + key + " have not been updated as they are the same." + utils.bcolors.ENDC)
                         continue
                     old_data.setdefault('stats', {})[key] = data['stats'][key]
             with open(output_file, 'w') as outfile:

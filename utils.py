@@ -343,22 +343,18 @@ def nearest_power_of_2(x):
     return 2**np.floor(np.log2(x))
 
 def adjust_anal_res(args):
-    
     if args.duration > 5.0:
-        return args.n_fft, args.hop_size, args.win_length, args.n_bins, args.n_mels
-    
-    scale_factor = args.duration / 4.0
-
+        return args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels
+    scale_factor = min(args.duration, 5.0) / 5.0  # scale based on a 5-second reference
+    length = args.y.shape[-1]
     n_fft = int(nearest_power_of_2(args.n_fft * scale_factor))
-    hop_size = int(nearest_power_of_2(args.hop_size * scale_factor))
-    win_length = int(384 * (scale_factor*0.5))
-    n_bins = int(84 * scale_factor)
-    n_mels = int(128 * scale_factor)
-    # if hop_size > win_length:
-    #     hop_length = int(win_length / 2)
-    # make sure n_fft is not less than 128
-    n_fft = max(128, n_fft)
-   
+    n_fft = min(n_fft, length)
+
+    hop_size = int(n_fft / 4)  
+    win_length = int(n_fft * 0.75)  # set to 75% of n_fft as a starting point
+    # win_length = int(384 * (scale_factor*0.5))
+    n_bins = max(12, int(84 * scale_factor))  # at least 12 bins (for PCA later)
+    n_mels = max(12, int(128 * scale_factor)) 
     return n_fft, hop_size, win_length, n_bins, n_mels
 
 def flatten_dict(d):

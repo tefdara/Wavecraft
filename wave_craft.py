@@ -53,7 +53,7 @@ class WaveCraft:
             self.args.num_frames = self.args.num_samples // self.args.hop_size
             self.args.window_length = 384
             self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels = utils.adjust_anal_res(self.args)
-            
+            print(self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels)
             if self.args.operation == "segment":
                 print(f'\n{utils.bcolors.MAGENTA}Segmenting {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Segmentor(self.args)
