@@ -359,3 +359,20 @@ def adjust_anal_res(args):
     n_fft = max(128, n_fft)
    
     return n_fft, hop_size, win_length, n_bins, n_mels
+
+def flatten_dict(d):
+    items = {}
+    for k, v in d.items():
+        
+        if isinstance(v, list):
+            for idx, item in enumerate(v):
+                stat_type = k.split('_')[-1]
+                key_without_stat = k.split('_' + stat_type)[0]
+                if idx < 10:
+                    idx = f'0{idx}'
+                indexed_key = f"{key_without_stat}_{idx}_{stat_type}"
+                items[indexed_key] = item
+        
+    # make sure stats are represented in order of index
+    items = {k: v for k, v in sorted(items.items(), key=lambda item: item[0])}        
+    return items

@@ -20,7 +20,13 @@ class WaveCraft:
         self.n_bins = 84
         self.n_mels = 128
         
-        self.files = []           
+        self.files = []
+        # check if dir is home dir
+        if self.args.input_file == "~":
+            print(f'{utils.bcolors.RED}You have selcted the home directory! This will include all the files on your machine.{utils.bcolors.ENDC}')
+            user_input = input(f'{utils.bcolors.GREEN}Are you sure you want to go ahead?:{utils.bcolors.ENDC}\n1) No\n2) Yes\n')
+            if user_input.lower() == '1':
+                sys.exit()           
         if os.path.isdir(self.args.input_file):
             self.input_dir = self.args.input_file
             for file in os.listdir(self.args.input_file):

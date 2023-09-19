@@ -47,41 +47,47 @@ class Extractor:
             rolloff = librosa.feature.spectral_rolloff(S=S_M, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             zcr = librosa.feature.zero_crossing_rate(self.args.y, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
             mfcc = librosa.feature.mfcc(S=librosa.power_to_db(M), sr=self.args.sample_rate)
+            mfcc_delta = librosa.feature.delta(mfcc, order=2)
             poly_features = librosa.feature.poly_features(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
             tonnetz = librosa.feature.tonnetz(y=self.args.y, sr=self.args.sample_rate, chroma=chroma_cqt)
             
             # rythm features
-            print(self.args.window_length, self.args.hop_size)
-            onset_env = librosa.onset.onset_strength(S=S_P, sr=self.args.sample_rate)
+            onset_env = librosa.onset.onset_strength(S=S_P, sr=self.args.sample_rate, lag=2)
             tempogram = librosa.feature.tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
-            tempo = librosa.feature.tempo(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
+            # tempo = librosa.feature.tempo(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
+            tempo, beats = librosa.beat.beat_track(y=self.args.y, sr=self.args.sample_rate, hop_length=int(self.args.hop_size*0.1))
+            print(beats[0])
             tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, bpm=tempo, hop_length=self.args.hop_size)
             
             
-            results['chroma_stft'] = np.mean(chroma_stft, axis=1)
-            results['chroma_cqt'] = np.mean(np.real(chroma_cqt), axis=1)
-            results['chroma_cens'] = np.mean(np.real(chroma_cens), axis=1)
-            results['rms'] = np.mean(rms, axis=1)
-            results['spectral_bandwidth'] = np.mean(spec_bw, axis=1)
-            results['spec_cent'] = np.mean(spec_cent, axis=1)
-            results['spec_contrast'] = np.mean(spec_contrast, axis=1)
-            results['spec_rolloff'] = np.mean(rolloff, axis=1)
-            results['zcr'] = np.mean(zcr, axis=1)
-            results['mfcc'] = np.mean(mfcc, axis=1)
-            results['poly_features'] = np.mean(poly_features, axis=1)   
-            results['tonnetz'] = np.mean(np.real(tonnetz), axis=1)
+            results['chroma_stft_mean'] = np.mean(chroma_stft, axis=1)
+            results['chroma_cqt_mean'] = np.mean(np.real(chroma_cqt), axis=1)
+            results['chroma_cens_mean'] = np.mean(np.real(chroma_cens), axis=1)
+            results['rms_mean'] = np.mean(rms, axis=1)
+            results['spectral_bandwidth_mean'] = np.mean(spec_bw, axis=1)
+            results['spec_cent_mean'] = np.mean(spec_cent, axis=1)
+            results['spec_contrast_mean'] = np.mean(spec_contrast, axis=1)
+            results['spec_rolloff_mean'] = np.mean(rolloff, axis=1)
+            results['zcr_mean'] = np.mean(zcr, axis=1)
+            results['mfcc_mean'] = np.mean(mfcc, axis=1)
+            results['mfcc_delta_mean'] = np.mean(mfcc_delta, axis=1)
+            results['poly_features_mean'] = np.mean(poly_features, axis=1)   
+            results['tonnetz_mean'] = np.mean(np.real(tonnetz), axis=1)
             
-            results['tempogram'] = np.mean(tempogram, axis=1)
-            results['tempo'] = tempo
-            results['fourier_tempogram'] = np.mean(np.real(fourier_tempogram), axis=1)
-            results['tempogram_ratio'] = np.mean(tempogram_ratio, axis=1)
+            results['tempogram_mean'] = np.mean(tempogram, axis=1)
+            results['beats'] = beats
+            # results['tempo'] = tempo
+            results['fourier_tempogram_mean'] = np.mean(np.real(fourier_tempogram), axis=1)
+            results['tempogram_ratio_mean'] = np.mean(tempogram_ratio, axis=1)
             
             
             # make everything JSON serializable
             for key in results:
                 if type(results[key]) is np.ndarray:
                     results[key] = results[key].tolist()
+            
+            results = utils.flatten_dict(results) if flatten_structure else results
             
         except Exception as e:
             print("Error processing", audio_file, ":", str(e))
