@@ -53,21 +53,21 @@ class WaveCraft:
             self.args.num_frames = self.args.num_samples // self.args.hop_size
             self.args.window_length = 384
             self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels = utils.adjust_anal_res(self.args)
-            print(self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels)
+            
             if self.args.operation == "segment":
-                print(f'\n{utils.bcolors.MAGENTA}Segmenting {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                print(f'\n{utils.bcolors.GREEN}Segmenting {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Segmentor(self.args)
             elif self.args.operation == "extract":
-                print(f'\n{utils.bcolors.YELLOW}Extracting features from {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                print(f'\n{utils.bcolors.GREEN}Extracting features from {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Extractor(self.args)
             elif self.args.operation == "onset":
-                print(f'\n{utils.bcolors.YELLOW}Detecting onsets in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                print(f'\n{utils.bcolors.GREEN}Detecting onsets in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = OnsetDetector(self.args)
             elif self.args.operation == "beat":
-                print(f'\n{utils.bcolors.YELLOW}Detecting beats in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                print(f'\n{utils.bcolors.GREEN}Detecting beats in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = BeatDetector(self.args)
             elif self.args.operation == "decomp":
-                print(f'\n{utils.bcolors.YELLOW}Decomposing {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
+                print(f'\n{utils.bcolors.GREEN}Decomposing {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
                 processor = Decomposer(self.args)
             else:
                 processor = utils
@@ -164,8 +164,8 @@ if __name__ == "__main__":
 
     # Create a group for other arguments
     other_group = parser.add_argument_group('Audio settings')
-    other_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
-    other_group.add_argument("--fmin", type=float, default=20, help="Minimum frequency. Default is 27.5.", required=False)
+    other_group.add_argument("-sr","--sample-rate", type=int, default=44100, help="Sample rate of the audio file. Default is 44100.", required=False)
+    other_group.add_argument("--fmin", type=float, default=30, help="Minimum frequency. Default is 30.", required=False)
     other_group.add_argument("--fmax", type=float, default=16000, help="Maximum frequency. Default is 16000", required=False)
     other_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
     other_group.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)

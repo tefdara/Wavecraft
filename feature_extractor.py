@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.9
 import librosa
 import numpy as np
 import os
@@ -21,9 +20,9 @@ class Extractor:
             os.makedirs(output_dir)
         if not output_file:
             output_file = os.path.join(output_dir, os.path.splitext(audio_file)[0]+'_analysis.json')
-        errors = 0
+        errors = {}
         results = {}
-        print("Analysing %s" % audio_file)
+        
         
         if not output_dir:
             file_dir = os.path.dirname(audio_file)
@@ -69,19 +68,30 @@ class Extractor:
             # rythm features
             onset_env = librosa.onset.onset_strength(S=S_P, sr=self.args.sample_rate, lag=2)
             tempogram = librosa.feature.tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
-            # tempo = librosa.feature.tempo(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
-            # fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length, hop_length=self.args.hop_size)
-            # tempo, beats = librosa.beat.beat_track(y=self.args.y, sr=self.args.sample_rate, hop_length=int(self.args.hop_size*0.25))
+            fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length)
             tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             
+            n_mffc = 20
+            if mfcc.shape[0] < n_mffc:
+                print(utils.bcolors.YELLOW+"Warning: padding mfcc with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                pad_amount = n_mffc - mfcc.shape[0]
+                mfcc = np.pad(mfcc, ((0, pad_amount), (0, 0)), mode='constant')
             
-            if M.shape[1] < rn_mels:
-                print("Warning: padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
-                pad_amount = rn_mels - M.shape[1]
-                M = np.pad(M, ((0, 0), (0, pad_amount)), mode='constant')
-
-            pca = PCA(n_components=12)
-            M_pca = pca.fit_transform(M.T).T
+            fourier_tempogram = np.real(fourier_tempogram)
+            n_ftempo = 20
+            if fourier_tempogram.shape[0] < n_ftempo:
+                print(utils.bcolors.YELLOW+"Warning: padding fourier tempogram with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                pad_amount = n_ftempo - fourier_tempogram.shape[0]
+                fourier_tempogram = np.pad(fourier_tempogram, ((0, pad_amount), (0, 0)), mode='constant')
+            pca_ftempo = PCA(n_components=n_ftempo)
+            fourier_tempogram = pca_ftempo.fit_transform(fourier_tempogram.T).T
+            
+            if M.shape[0] < rn_mels:
+                print(utils.bcolors.YELLOW+"Warning: padding mel spectrogram with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                pad_amount = rn_mels - M.shape[0]
+                M = np.pad(M, ((0, pad_amount), (0, 0)), mode='constant')
+            pca_M = PCA(n_components=rn_mels)
+            M_pca = pca_M.fit_transform(M.T).T
             
             features = {
                 'mel_spec_stdv': M_pca, # 'mel_spec': M,
@@ -103,6 +113,7 @@ class Extractor:
                 'mfcc_delta': mfcc_delta,
                 'poly_features': poly_features,
                 'tempogram_ratio': tempogram_ratio,
+                'fourier_tempogram': fourier_tempogram,
                 'tonnetz': tonnetz,
             }
             
@@ -127,8 +138,9 @@ class Extractor:
             results = utils.flatten_dict(results) if flatten_structure else results
             
         except Exception as e:
-            print("Error processing", audio_file, ":", str(e))
-            return
+            print(utils.bcolors.RED+"Error processing", audio_file, ":", str(e)+utils.bcolors.ENDC)
+            errors[audio_file] = str(e)
+            return errors
                 
         data = {'id': audio_file, 'stats': results}
         if os.path.isfile(output_file):
@@ -147,18 +159,5 @@ class Extractor:
                 json.dump(data, f, indent=4, sort_keys=True)
     
     def main(self):
-        
         self.extract(self.args.input_file)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description = """
-        Extracts audio features from a directory of audio files using librosa.
-    """)
-    parser.add_argument('-i', '--input-file', type=str, help='Input directory', required=True)
-    parser.add_argument('-o', '--output-file', type=str, help='Output JSON file', required=False)
-    parser.add_argument('-O', '--output-directory', type=str, help='Output directory to store descriptor files', required=False)
-    parser.add_argument('-f', '--flaten-dict',  action='store_true', help='Flatten output dictionary so that all the nested dicts are combined into one', required=False, default=True)
-
-    args = parser.parse_args()
-    exrractor = Extractor(args)
-    exrractor.main(args)

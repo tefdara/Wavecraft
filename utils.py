@@ -267,9 +267,6 @@ def trim_after_last_silence(y, sr, top_db=-70.0, frame_length=2048, hop_length=5
     """
     dur = len(y) / sr
     silence_min_duration = dur * 0.1
-    # if dur < silence_min_duration:
-    #     return y 
-    # If stereo, convert to mono for analysis
     if len(y.shape) > 1 and y.shape[1] == 2:
         y_mono = np.mean(y, axis=1)
     else:
@@ -351,8 +348,8 @@ def adjust_anal_res(args):
     n_fft = min(n_fft, length)
 
     hop_size = int(n_fft / 4)  
-    win_length = int(n_fft * 0.75)  # set to 75% of n_fft as a starting point
-    # win_length = int(384 * (scale_factor*0.5))
+    # win_length = int(n_fft * 0.75)  # set to 75% of n_fft as a starting point
+    win_length = int(384 * (scale_factor*0.5))
     n_bins = max(12, int(84 * scale_factor))  # at least 12 bins (for PCA later)
     n_mels = max(12, int(128 * scale_factor)) 
     return n_fft, hop_size, win_length, n_bins, n_mels

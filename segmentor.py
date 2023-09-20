@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.9
 import os, sys
 import librosa
 import argparse
