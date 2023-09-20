@@ -6,7 +6,7 @@ import asyncio
 import traceback
 import numpy as np
 import sklearn.decomposition
-import utils
+import wavecraft.utils as utils
 
 class Decomposer:
     def __init__(self, input_file, method, n_components=4, render=False, render_path=None, output_file_harmonic=None, output_file_percussive=None, sample_rate=48000):

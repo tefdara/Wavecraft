@@ -6,7 +6,7 @@ import soundfile as sf
 import numpy as np
 import traceback
 import asyncio
-import utils
+import wavecraft.utils as utils
 
 
 class OnsetDetector:

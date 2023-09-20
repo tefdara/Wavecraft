@@ -2,8 +2,7 @@ import librosa
 import numpy as np
 import os
 import json
-import argparse
-import utils
+import wavecraft.utils as utils
 from sklearn.decomposition import PCA
 
 class Extractor:

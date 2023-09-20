@@ -2,12 +2,7 @@
 
 import os, sys, argparse
 import librosa
-import utils
-from segmentor import Segmentor
-from onset_detector import OnsetDetector
-from beat_detector import BeatDetector
-from decomposer import Decomposer
-from feature_extractor import Extractor
+from wavecraft import *
 
 class WaveCraft:
     def __init__(self, args):
@@ -56,19 +51,19 @@ class WaveCraft:
             
             if self.args.operation == "segment":
                 print(f'\n{utils.bcolors.GREEN}Segmenting {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
-                processor = Segmentor(self.args)
+                processor = segmentor(self.args)
             elif self.args.operation == "extract":
                 print(f'\n{utils.bcolors.GREEN}Extracting features from {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
-                processor = Extractor(self.args)
+                processor = extractor(self.args)
             elif self.args.operation == "onset":
                 print(f'\n{utils.bcolors.GREEN}Detecting onsets in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
-                processor = OnsetDetector(self.args)
+                processor = onset_detector(self.args)
             elif self.args.operation == "beat":
                 print(f'\n{utils.bcolors.GREEN}Detecting beats in {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
-                processor = BeatDetector(self.args)
+                processor = beat_detector(self.args)
             elif self.args.operation == "decomp":
                 print(f'\n{utils.bcolors.GREEN}Decomposing {os.path.basename(self.args.input_file)}...{utils.bcolors.ENDC}')
-                processor = Decomposer(self.args)
+                processor = decomposer(self.args)
             else:
                 processor = utils
                 self.misc = True

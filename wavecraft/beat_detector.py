@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 import scipy
 import os
-from utils import bcolors
+from wavecraft.utils import bcolors
 
 class BeatDetector:
     def __init__(self, args):
