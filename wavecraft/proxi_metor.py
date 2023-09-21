@@ -196,6 +196,8 @@ class ProxiMetor:
 
             sound_files = similar_files + [file_id]
             for sound in similar_files:
+                if not isinstance(sound, str):
+                    break
                 # Assuming each sound has an associated JSON file
                 source_file_path = os.path.join(source_diectory, sound)
                 source_file_without_extension = os.path.splitext(sound)[0]
@@ -213,7 +215,7 @@ class ProxiMetor:
                 else:
                     print(f'{utils.bcolors.RED} File {sound} does not exist {utils.bcolors.ENDC}')
 
-                await asyncio.sleep(1)  # just to mimic some delay
+                await asyncio.sleep(0.005)  # just to mimic some delay
             print(f'{utils.bcolors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.bcolors.ENDC}\n')
         except Exception as e:
             print(f'{utils.bcolors.RED} Error occurred while copying files: {e} {utils.bcolors.ENDC}')

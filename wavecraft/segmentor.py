@@ -4,20 +4,21 @@ import argparse
 import soundfile as sf
 import utils
 import asyncio
-from wavecraft import utils, beat_detector, onset_detector
+from wavecraft import utils, beat_detector, onset_detector, Processor
 class Segmentor:
     def __init__(self, args):
         self.args = args
-        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
-        self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input_file).split('.')[0])
+        self.processor = Processor(args)
+        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0] + '_segments'
+        self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input).split('.')[0])
         
             
     def render_segments(self, segments):
         print(f'\n{utils.bcolors.GREEN}Rendering segments...{utils.bcolors.ENDC}\n')
-        y_m, sr_m = sf.read(self.args.input_file, dtype='float32')
+        y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
-        prev_metadata = utils.extract_metadata(self.args.input_file, self.args)
+        prev_metadata = utils.extract_metadata(self.args.input, self.args)
         
         # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
@@ -31,8 +32,8 @@ class Segmentor:
                 end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
             # fade once before trimming to get rid of clicks at the beginning and end of the segment
-            segment = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=50, curve_type=self.args.curve_type)
-            segment = utils.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
+            segment = self.processor.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=70, curve_type=self.args.curve_type)
+            segment = self.processor.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # segment, _ = utils.trim(segment, threshold=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
@@ -40,14 +41,14 @@ class Segmentor:
                 print(f'{utils.bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{utils.bcolors.ENDC} : {segment_length}s')
                 continue 
             count += 1
-            faded_seg = utils.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
-            faded_seg = utils.filter(faded_seg, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
-            normalised_seg = utils.normalise_audio(faded_seg, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
+            segment = self.processor.fade_io(audio=segment, sr=self.args.sample_rate, fade_duration=self.args.fade_duration, curve_type=self.args.curve_type)
+            segment = self.processor.filter(segment, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
+            segment = self.processor.normalise_audio(segment, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
             print(f'{utils.bcolors.CYAN}Saving segment {count} to {segment_path}.{utils.bcolors.ENDC}')
             print(f'{utils.bcolors.BLUE}length: {segment_length}s{utils.bcolors.ENDC}')
             # Save segment to a new audio file
-            sf.write(segment_path, normalised_seg, sr_m, format='WAV', subtype='PCM_24')
+            sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             utils.write_metadata(segment_path, prev_metadata)
 
         utils.export_json(prev_metadata, self.base_segment_path, data_type='seg_metadata')
@@ -111,8 +112,8 @@ class Segmentor:
 
         if self.args.segmentation_method == 'text':
             if(not self.args.input_text):
-                self.args.input_text = os.path.splitext(self.args.input_file)[0] + '.txt'
-            self.segment_using_txt(self.args.input_file, self.args.input_text, self.args.output_directory, self.args.file_format)
+                self.args.input_text = os.path.splitext(self.args.input)[0] + '.txt'
+            self.segment_using_txt(self.args.input, self.args.input_text, self.args.output_directory, self.args.file_format)
         else:
             os.makedirs(self.args.output_directory, exist_ok=True)
             if user_input.lower() == '1':

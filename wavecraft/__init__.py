@@ -1,5 +1,6 @@
 import sys, os
 import utils
+from processor import Processor
 from feature_extractor import Extractor as extractor
 from beat_detector import BeatDetector as beat_detector
 from onset_detector import OnsetDetector as onset_detector

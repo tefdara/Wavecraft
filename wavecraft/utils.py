@@ -1,9 +1,6 @@
-import os, sys, time, librosa
-import soundfile as sf 
+import os, time
 import numpy as np 
 import subprocess, tempfile, json
-from scipy.signal import butter, filtfilt
-from pyloudnorm import Meter, normalize
 
 
 # Define color codes for print messages
@@ -17,111 +14,6 @@ class bcolors:
     MAGENTA = '\033[95m'
     GREY = '\033[37m'
     ENDC = '\033[0m'
-
-def render_components(components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
-    
-    if not os.path.exists(render_path):
-        os.makedirs(render_path)
-    
-    for i in range(n_components):
-        # Reconstruct the spectrogram of the component
-        component_spectrogram = components[:, i:i+1] @ activations[i:i+1, :]
-        # Combine magnitude with the original phase
-        component_complex = component_spectrogram * phase
-        # Get the audio signal back using inverse STFT
-        y_comp = librosa.istft(component_complex, hop_length=hop_length)
-        
-        # Save the component to an audio file
-        sf.write(os.path.join(render_path, f'component_{i}.wav'), y_comp, sr)
-
-def render_hpss(y_harmonic, y_percussive, render_path, sr=48000):
-    if not os.path.exists(render_path):
-        os.makedirs(render_path)
-        
-    sf.write(os.path.join(render_path, 'harmonic.wav'), y_harmonic, sr)
-    sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)    
-import numpy as np
-
-def fade_io(audio, sr, fade_duration=20, curve_type='exp'):
-    # convert fade duration to samples
-    fade_duration_samples = int(fade_duration * sr / 1000)
-    
-    # If fade_duration_samples is larger than the segment
-    fade_duration_samples = min(fade_duration_samples, audio.shape[0])
-    
-    # switch between different curve types
-    if curve_type == 'exp':
-        fade_curve = np.linspace(0.0, 1.0, fade_duration_samples) ** 2
-    elif curve_type == 'log':
-        fade_curve = np.sqrt(np.linspace(0.0, 1.0, fade_duration_samples))
-    elif curve_type == 'linear':
-        fade_curve = np.linspace(0.0, 1.0, fade_duration_samples)
-    elif curve_type == 's_curve':
-        t = np.linspace(0.0, np.pi / 2, fade_duration_samples)
-        fade_curve = np.sin(t)
-    elif curve_type == 'hann':
-        fade_curve = np.hanning(fade_duration_samples) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
-    
-    # Apply fade-in to the beginning and fade-out to the end for each channel
-    for ch in range(audio.shape[1]): # For each channel
-        audio[:fade_duration_samples, ch] *= fade_curve
-        audio[-fade_duration_samples:, ch] *= fade_curve[::-1] # reverse the curve for fade-out
-        
-    return audio
-
-
-def filter(data, sr, cutoff, btype='high', order=5):
-    if(cutoff == 0):
-        return data
-    
-    if len(data.shape) == 1:
-        num_channels = 1
-    else:
-        num_channels = data.shape[1]
-
-    # get the nyquist frequency
-    nyq = 0.5 * sr
-    # normalize the cutoff frequency
-    normal_cutoff = cutoff / nyq
-    b, a = butter(order, normal_cutoff, btype=btype, analog=False)
-
-    # Initialize a new array for the filtered data
-    y = np.zeros_like(data)
-
-    # if stereo, filter each channel separately
-    if num_channels > 1:
-        for ch in range(num_channels):
-            y[:, ch] = filtfilt(b, a, data[:, ch])
-    else: # if mono
-        y = filtfilt(b, a, data)
-
-    return y
-
-def normalise_audio(y, sr, target_level, mode="peak"):
-    """
-    Normalize audio to a specified level based on the chosen normalization type.
-
-    Parameters:
-    - input_file: Path to the input audio file.
-    - output_file: Path to save the normalized audio file.
-    - normalization_type: Type of normalization ("peak", "rms", "loudness").
-    - target_level: Desired level (in dB) for normalization.
-    """
-
-    if mode == "peak":
-        # return target_level * y / max(abs(y))
-        return normalize.peak(y, target_level)
-    elif mode == "rms":
-        rms_original = (y**2).mean()**0.5
-        scaling_factor = 10**(target_level/20) / rms_original
-        return y * scaling_factor
-    elif mode == "loudness":
-        meter = Meter(sr, block_size=0.05)
-        loudness = meter.integrated_loudness(y)
-        return normalize.loudness(y, loudness, target_level)
-    else:
-        raise ValueError(f"Unknown normalization type: {mode}")
-
 
 
 def extract_metadata(input_file, args):
@@ -243,75 +135,6 @@ def export_json(data, output_path, data_type='metadata'):
     with open(output_file, 'w') as file:
         json.dump(data_dict, file, indent=4)
     
-def trim(y, threshold=20, frame_length=2048, hop_length=512):
-    # margin = int(self.sample_rate * 0.1)
-    # y = y[margin:-margin]
-    # return librosa.effects.trim(
-    #     y, top_db=40, frame_length=1024, hop_length=256)[0]
-    if len(y.shape) == 1:
-        yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
-        return yt, indices
-    elif y.shape[1] == 2:
-        # Trim the left channel
-        _, index_left = librosa.effects.trim(y[:, 0], top_db=threshold, frame_length=frame_length, hop_length=hop_length)
-
-        # Trim the right channel
-        _, index_right = librosa.effects.trim(y[:, 1], top_db=threshold, frame_length=frame_length, hop_length=hop_length)
-
-        # Use the maximum of the start indices and the minimum of the stop indices to keep the channels synchronized
-        start_idx = max(index_left[0], index_right[0])
-        end_idx = min(index_left[1], index_right[1])
-
-        # Extract synchronized trimmed audio based on the indices
-        yt_stereo = y[start_idx:end_idx, :]
-
-        return yt_stereo, (start_idx, end_idx)
-
-    else:
-        print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
-
-def trim_after_last_silence(y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
-    """
-    Trim audio after the last prolonged silence.
-
-    Parameters:
-    - y (np.ndarray): Audio time series.
-    - sr (int): Sampling rate of the audio file.
-    - top_db (float): The threshold (in dB) below which the signal is regarded as silent.
-    - frame_length (int): The number of samples in each frame.
-    - hop_length (int): The number of samples between successive frames.
-    - silence_min_duration (float): The minimum duration of silence in seconds required for trimming.
-
-    Returns:
-    - y_trimmed (np.ndarray): The audio time series after trimming.
-    """
-    dur = len(y) / sr
-    silence_min_duration = dur * 0.1
-    if len(y.shape) > 1 and y.shape[1] == 2:
-        y_mono = np.mean(y, axis=1)
-    else:
-        y_mono = y
-
-    # Calculate amplitude envelope
-    envelope = librosa.power_to_db(np.abs(librosa.stft(y_mono, n_fft=frame_length, hop_length=hop_length)), ref=np.max)
-    # Detect where the envelope is below the threshold
-    silent_frames = np.where(envelope.mean(axis=0) < top_db)[0]
-    # If there are no silent frames, just return the original audio
-    if len(silent_frames) == 0:
-        return y
-
-    # Group consecutive silent frames into silence periods
-    breaks = np.where(np.diff(silent_frames) > 1)[0]
-    silence_periods = np.split(silent_frames, breaks+1)
-
-    # If the last silence is long enough, trim everything after it
-    last_silence = silence_periods[-1]
-    if len(last_silence) * hop_length / sr > silence_min_duration:
-        trim_index = last_silence[0] * hop_length
-        y_trimmed = y[:trim_index]
-        return y_trimmed
-
-    return y
 
 def scientific_notation_to_float(array, precision=2):
         
@@ -331,25 +154,6 @@ def scientific_notation_to_float(array, precision=2):
     else:
         print(f'{bcolors.RED}Invalid input. Expected a numpy array or a float, got {type(array)}{bcolors.ENDC}')
         return None
-
-def random_crop(y, sr, duration):
-    assert (y.ndim <= 2)
-
-    target_len = sr * duration
-    y_len = y.shape[-1]
-    start = np.random.choice(range(np.maximum(1, y_len - target_len)), 1)[0]
-    end = start + target_len
-    if y.ndim == 1:
-        y = y[start:end]
-    else:
-        y = y[:, start:end]
-    return y
-
-def batch_rename(input_dir, output_dir, prefix, extension):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for i, file in enumerate(os.listdir(input_dir)):
-        os.rename(os.path.join(input_dir, file), os.path.join(output_dir, f'{prefix}_{i}.{extension}'))
         
 def check_format(file):
     return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3', 'json']

@@ -2,13 +2,15 @@
 
 import os, sys, argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-import librosa
+import librosa, soundfile as sf
 from wavecraft import *
 
 class WaveCraft:
     def __init__(self, args):
         self.args = args
-        self.misc = self.args.operation in ["wmeta", "rmeta", "hpf", "info", "proxim"]
+        self.dp = self.args.operation in ["wmeta", "rmeta", "info", "proxim"]
+        self.dsp = self.args.operation in ["segment", "extract", "onset", "beat", "decomp", "filter", "norm"]
+        self.process = self.args.operation in ["filter", "norm"]
         
         self.files = []
         if self.args.input == '.':
@@ -32,66 +34,89 @@ class WaveCraft:
             print(f'{utils.bcolors.RED}Could not find any valid files!{utils.bcolors.ENDC}')
             sys.exit()
                     
-        if self.misc:
+        if self.dp:
             return
         # store these as they will be adjusted for short signals
         self.n_fft = args.n_fft
         self.hop_size = args.hop_size
-        self.window_length = 384 # for use with rythm features, otherwise window length = n_fft
-        self.n_bins = 84
-        self.n_mels = 128
+        self.window_length = self.args.window_length = 384 # for use with rythm features, otherwise window length = n_fft
+        self.n_bins = self.args.n_bins = 84
+        self.n_mels = self.args.n_mels = 128
+
         
     def main(self):
-        
         if self.args.operation == "proxim":
             print(f'\n{utils.bcolors.GREEN}Finding {self.args.n_similar} similar sounds to {self.args.identifier or "all"}...{utils.bcolors.ENDC}\n')
-            processor = proxi_metor(self.args)
-            processor.main()
+            craft = proxi_metor(self.args)
+            craft.main()
             return
         
+        if self.process:
+            processor = Processor(self.args, mode='render')
+  
+        # process each file
         for file in self.files:
             self.args.input = file
-            self.args.y=librosa.load(self.args.input, sr=self.args.sample_rate)[0]
-            self.args.num_samples = len(self.args.y)
-            self.args.duration = self.args.num_samples / self.args.sample_rate
-            self.args.n_bins = 84
-            self.args.num_frames = self.args.num_samples // self.args.hop_size
-            self.args.window_length = 384
-            self.args.n_fft, self.args.hop_size, self.args.window_length, self.args.n_bins, self.args.n_mels = utils.adjust_anal_res(self.args)
-            
-            if self.args.operation == "segment":
-                print(f'\n{utils.bcolors.GREEN}Segmenting {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                processor = segmentor(self.args)
-            elif self.args.operation == "extract":
-                print(f'\n{utils.bcolors.GREEN}Extracting features from {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                processor = extractor(self.args)
-            elif self.args.operation == "onset":
-                print(f'\n{utils.bcolors.GREEN}Detecting onsets in {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                processor = onset_detector(self.args)
-            elif self.args.operation == "beat":
-                print(f'\n{utils.bcolors.GREEN}Detecting beats in {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                processor = beat_detector(self.args)
-            elif self.args.operation == "decomp":
-                print(f'\n{utils.bcolors.GREEN}Decomposing {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                processor = decomposer(self.args)
-            else:
-                processor = utils
-  
-            if self.misc == False:
-                processor.main()
+            if self.dsp:
+                # load the audio with orginal sample rate using sf if just processing
+                if self.process:
+                    self.args.y, self.args.sample_rate = sf.read(self.args.input, dtype='float32')
+                    self.args.output = self.args.input
+                else:
+                    self.args.y=librosa.load(self.args.input, sr=self.args.sample_rate)[0]
+                
+                self.args.num_samples = len(self.args.y)
+                self.args.duration = self.args.num_samples / self.args.sample_rate
+                self.args.num_frames = self.args.num_samples // self.args.hop_size
+                
+                self.args.n_fft, 
+                self.args.hop_size, 
+                self.args.window_length, 
+                self.args.n_bins, 
+                self.args.n_mels = utils.adjust_anal_res(self.args)
+                
+                if self.args.operation == "segment":
+                    print(f'\n{utils.bcolors.GREEN}Segmenting {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    craft = segmentor(self.args)
+                    craft.main()
+                elif self.args.operation == "extract":
+                    print(f'\n{utils.bcolors.GREEN}Extracting features from {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    craft = extractor(self.args)
+                    craft.main()
+                elif self.args.operation == "onset":
+                    print(f'\n{utils.bcolors.GREEN}Detecting onsets in {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    craft = onset_detector(self.args)
+                    craft.main()
+                elif self.args.operation == "beat":
+                    print(f'\n{utils.bcolors.GREEN}Detecting beats in {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    craft = beat_detector(self.args)
+                    craft.main()
+                elif self.args.operation == "decomp":
+                    print(f'\n{utils.bcolors.GREEN}Decomposing {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    craft = decomposer(self.args)
+                    craft.main()
+                elif self.args.operation == "filter":
+                    print(f'\n{utils.bcolors.GREEN}Applying filter to {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    processor.filter(self.args.y, self.args.sample_rate, self.args.filter_frequency, self.args.filter_type)
+                    
+                elif self.args.operation == "norm":
+                    print(f'\n{utils.bcolors.GREEN}Normalising {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
+                    processor.normalise_audio(self.args.y, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)                    
+                
             else:
                 if self.args.operation == "wmeta":
                     print(f'\n{utils.bcolors.YELLOW}Writing metadata to {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
                     if(self.args.meta_file):
                         self.args.meta = utils.load_json(self.args.meta_file)
-                    processor.write_metadata(self.args.input, self.args.meta)
+                    else:
+                        print(f'{utils.bcolors.RED}No metadata file provided!{utils.bcolors.ENDC}')
+                        sys.exit()
+                    utils.write_metadata(self.args.input, self.args.meta)
                 if self.args.operation == "rmeta":
                     print(f'\n{utils.bcolors.YELLOW}Extracting metadata from {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                    processor.extract_metadata(self.args.input, self.args)
-                if self.args.operation == "hpf":
-                    print(f'\n{utils.bcolors.YELLOW}Applying high-pass filter to {os.path.basename(self.args.input)}...{utils.bcolors.ENDC}')
-                    processor.filter(self.args.input, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
-            
+                    utils.extract_metadata(self.args.input, self.args)
+                
+        if self.dsp:
             self.args.n_fft = self.n_fft
             self.args.hop_size = self.hop_size
             self.args.window_length = self.window_length
@@ -142,8 +167,8 @@ if __name__ == "__main__":
     segmentation_group.add_argument("-f", "--fade-duration", type=int, default=20, help="Duration in ms for fade in and out. Default is 50ms.", required=False)
     segmentation_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fade in and out. Default is exponential.", required=False)
-    segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.1.", required=False)
-    segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=60, help="Trim silence from the beginning and end of the audio file. Default is 60 db.", required=False)
+    segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.08, help="Onset detection threshold. Default is 0.08.", required=False)
+    segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False)
     segmentation_group.add_argument("-oe", "--onset-envelope", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chr', 'mfcc', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz', 'pf'], default="mel",\
                         help="Onset envelope to use for onset detection. Default is mel (mel spectrogram). Choices are: mel (mel spectrogram), cqt (constant-Q transform), stft (short-time Fourier transform), cqt_chr (chroma constant-Q transform), mfcc (Mel-frequency cepstral coefficients), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features), pf (poly features).", required=False)
     
