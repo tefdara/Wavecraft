@@ -10,7 +10,31 @@ import wavecraft.utils as utils
 class ProxiMetor:
     def __init__(self, args):
         self.args = args
+        self.data_path = os.path.abspath(self.args.input)
+        self.ops = None
+        self.base_path = './similar_files'
+        if(self.args.ops):
+            # Load the options yamle file from this directory
+            ops_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "metric_ops.yaml")
+            self.ops = yaml.load(open(ops_file), Loader=yaml.FullLoader)
     
+    def expand_nested_columns(self, df):
+        new_columns = []
+        drop_columns = []
+        
+        # Process each column
+        for col in df.columns:
+            if isinstance(df[col].iloc[0], list):
+                # Create separate columns for each list item
+                expanded_col = pd.DataFrame(df[col].tolist(), columns=[f"{col}_{i}" for i in range(len(df[col].iloc[0]))])
+                new_columns.append(expanded_col)
+                drop_columns.append(col)
+
+        # Concatenate original dataframe with the new columns
+        df = pd.concat([df.drop(columns=drop_columns)] + new_columns, axis=1)
+        
+        return df
+            
     def find_n_most_similar(self, identifier, df, metric=None, n=5, clss="stats"):
         """
         Find the indices of the n most similar files based on all metrics or a specific metric.
@@ -23,28 +47,38 @@ class ProxiMetor:
         Returns:
             A list of indices of the n most similar sounds.
         """
+        df = self.expand_nested_columns(df)
+        scaler = StandardScaler()
+            
         # Standardize either specific metric or all metrics under a class
-        descriptors_columns = [col for col in df.columns if clss in col]
-        
         if metric:
-            metric = clss + "_" + metric
-            if metric not in df.columns:
-                raise ValueError(f"The metric {metric} doesn't exist in the data.")
-            scaler = StandardScaler()
-            df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
-            columns_to_compare = [metric + "_standardized"]
+            if metric.endswith('_'):  # Wildcard matching
+                print(f'{utils.bcolors.MAGENTA}Using wildcard matching for {metric} {utils.bcolors.ENDC}')
+                prefix = clss + "_" + metric[:-1] # Remove the wildcard
+                columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
+                df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
+            else:
+                print(f'{utils.bcolors.MAGENTA}Using exact matching for {metric} {utils.bcolors.ENDC}')
+                metric = clss + "_" + metric
+                if metric not in df.columns:
+                    raise ValueError(f"The metric {metric} doesn't exist in the data.")
+                df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
+                columns_to_compare = [metric + "_standardized"]
         else:
-            scaler = StandardScaler()
+            print(f'{utils.bcolors.MAGENTA}Using all metrics for {clss} {utils.bcolors.ENDC}')
+            descriptors_columns = [col for col in df.columns if clss in col]
             standardized_features = scaler.fit_transform(df[descriptors_columns])
             df[descriptors_columns] = standardized_features
             columns_to_compare = descriptors_columns
         
+        # Filter by the given identifier
         sound_data = df[df["id"] == identifier].iloc[0]
-        distances = []
-        for index, row in df.iterrows():
-            if row["id"] != identifier:
-                dist = distance.euclidean(sound_data[columns_to_compare].values, row[columns_to_compare].values)
-                distances.append((row["id"], dist))
+        
+        # Compute distances for all rows not equal to the given identifier
+        distances = df[df["id"] != identifier].apply(
+            lambda row: (row["id"], distance.euclidean(sound_data[columns_to_compare].values, row[columns_to_compare].values)), 
+            axis=1
+        ).tolist()
         
         distances.sort(key=lambda x: x[1])
         return [item[0] for item in distances[:n]]
@@ -144,43 +178,45 @@ class ProxiMetor:
         Returns:
             None
         """
-        if(len(similar_files) == 0):
-            return
-        # Create a directory for the sound_id
-        target_folder = os.path.join(base_path, file_id)
-        if not os.path.exists(target_folder):
-            os.makedirs(target_folder)
-        
-        # create a directory for the analysis files
-        analysis_folder = os.path.join(target_folder, "analysis")
-        if not os.path.exists(analysis_folder):
-            os.makedirs(analysis_folder)
-            
-        # This assumes that the source directory is one level above the data_path
-        source_diectory = os.path.dirname(data_path)
-        
-        sound_files = similar_files + [file_id]
-        for sound in sound_files:
-            # Assuming each sound has an associated JSON file
-            source_file_path = os.path.join(source_diectory, sound)
-            source_file_without_extension = os.path.splitext(sound)[0]
-            # also copy the analysis files
-            analysis_file = source_file_without_extension+"_analysis.json"
-            analysis_file_path = os.path.join(data_path, analysis_file)
-            # Copy the file to the target directory
-            if os.path.exists(source_file_path):
-                # check if the file already exists in the target directory
-                if not os.path.exists(os.path.join(target_folder, sound)):
-                    print(f"Copying {source_file_without_extension} to {target_folder}")
-                    shutil.copy2(source_file_path, target_folder)
-                if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
-                    print(f"Copying {analysis_file_path} to {analysis_folder}")
-                    shutil.copy2(analysis_file_path, analysis_folder)
-            else:
-                print(f"File {source_file_path} not found!")
+        try:
+            if(len(similar_files) == 0):
+                return
+            # Create a directory for the sound_id
+            target_folder = os.path.join(base_path, file_id)
+            if not os.path.exists(target_folder):
+                os.makedirs(target_folder)
 
-            await asyncio.sleep(1)  # just to mimic some delay
-        print(f"Copied similar sounds for {file_id} to {target_folder}.")
+            # create a directory for the analysis files
+            analysis_folder = os.path.join(target_folder, "analysis")
+            if not os.path.exists(analysis_folder):
+                os.makedirs(analysis_folder)
+
+            # This assumes that the source directory is one level above the data_path
+            source_diectory = os.path.dirname(data_path)
+
+            sound_files = similar_files + [file_id]
+            for sound in similar_files:
+                # Assuming each sound has an associated JSON file
+                source_file_path = os.path.join(source_diectory, sound)
+                source_file_without_extension = os.path.splitext(sound)[0]
+                # also copy the analysis files
+                analysis_file = source_file_without_extension+"_analysis.json"
+                analysis_file_path = os.path.join(data_path, analysis_file)
+                # Copy the file to the target directory
+                if os.path.exists(source_file_path):
+                    # check if the file already exists in the target directory
+                    if not os.path.exists(os.path.join(target_folder, sound)):
+                        print(f'{utils.bcolors.CYAN} Copying {sound} {utils.bcolors.ENDC}')
+                        shutil.copy2(source_file_path, target_folder)
+                    if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
+                        shutil.copy2(analysis_file_path, analysis_folder)
+                else:
+                    print(f'{utils.bcolors.RED} File {sound} does not exist {utils.bcolors.ENDC}')
+
+                await asyncio.sleep(1)  # just to mimic some delay
+            print(f'{utils.bcolors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.bcolors.ENDC}\n')
+        except Exception as e:
+            print(f'{utils.bcolors.RED} Error occurred while copying files: {e} {utils.bcolors.ENDC}')
 
     async def process_batch(self, all_files, used_files, df, metric=None, n=5, clss="stats", id=None, ops=None):
         """Process a batch of sounds asynchronously."""
@@ -195,70 +231,32 @@ class ProxiMetor:
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        print(f"Found {len(similar_files)} similar files for {primary_file}.")
-        await self.copy_similar_to_folders(base_path, data_path, primary_file, similar_files)
+        print(f'{utils.bcolors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} {utils.bcolors.ENDC}')
+        await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)
         
     def main(self):
-        data_path = os.path.abspath(self.args.data_path)
-        identifier_to_test = args.identifier
-        base_path = self.args.base_path
-        class_to_analyse = self.args.class_to_analyse
-        metric_to_analyze = self.args.metric_to_analyze
-        n = self.args.n
-        use_options_file = self.args.ops
-        ops = None
-        n_max = args.n_max
-        
-        if(use_options_file):
-            # Load the options yamle file from this directory
-            ops_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "metric_ops.yaml")
-            ops = yaml.load(open(ops_file), Loader=yaml.FullLoader)
-            
-        # Load the data
-        data = utils.load_json(data_path)
+        data = utils.load_dataset(self.data_path)
         # Convert to DataFrame
         df = pd.json_normalize(data, sep="_")
-        
         all_files = set(df["id"].tolist())
-        if n_max == -1:
-            n_max = len(all_files)
+        
+        if self.args.n_max == -1:
+            self.args.n_max = len(all_files)
         used_files = set()
         loop = asyncio.get_event_loop()
         
-        while all_files and len(used_files) < n_max:
+        while all_files and len(used_files) < self.args.n_max:
             loop.run_until_complete(self.process_batch(all_files=all_files, 
                                                 used_files=used_files, 
                                                 df=df, 
-                                                metric=metric_to_analyze, 
-                                                n=n, 
-                                                clss=class_to_analyse, 
-                                                id=identifier_to_test, 
-                                                ops=ops))
-    
+                                                metric=self.args.metric_to_analyze, 
+                                                n=self.args.n_similar, 
+                                                clss=self.args.class_to_analyse, 
+                                                id=self.args.identifier, 
+                                                ops=self.ops))
 
-if(__name__ == "__main__"):
-    
-    parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('-d', '--data-path', type=str, required=True,
-                        help='Path to the data directory')
-    parser.add_argument('-id', '--identifier', type=str,
-                        help='Identifier to test')
-    parser.add_argument('-bp', '--base-path', type=str, default='./similar_files',
-                        help='Base directory to store all similar file groups')
-    parser.add_argument('-cls', '--class_to_analyse', type=str, default='stats',
-                        help='Class to analyse')
-    parser.add_argument('-m', '--metric-to-analyze', type=str, default=None,
-                        help='Metric to analyze')
-    parser.add_argument('-n', type=int, default=5,
-                        help='Number of similar sounds to retrieve')
-    parser.add_argument('-ops', action='store_true', default=False,
-                        help='Use opetions file to fine tune the metric learning')
-    parser.add_argument('-nm', '--n-max', type=int, default=-1, 
-                        help='Max number of similar files to retrieve, Default: -1 (all)')
-
-    args = parser.parse_args()
     
 
 

@@ -10,18 +10,22 @@ class Extractor:
         self.args = args
         # self.args.ignore_descs = ['analysis', 'bit_rate', 'number_channels', 'sample_rate','codec', 'md5_encoded', 'tags', 'version', 'lossless']
         
-    def extract(self, audio_file, output_file=None, output_dir=None, flatten_structure=True):
-        audio_file = os.path.basename(audio_file)
+    def extract(self):
+        
+        path = self.args.input
+        audio_file = os.path.basename(path)
+        output_dir = self.args.output_directory
+        flatten_structure = self.args.flatten_dictionary
+        
         if not output_dir:
             file_dir = os.path.dirname(audio_file)
             output_dir = os.path.join(file_dir, 'analysis')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        if not output_file:
-            output_file = os.path.join(output_dir, os.path.splitext(audio_file)[0]+'_analysis.json')
+        
+        output_file = os.path.join(output_dir, os.path.splitext(audio_file)[0]+'_analysis.json')
         errors = {}
         results = {}
-        
         
         if not output_dir:
             file_dir = os.path.dirname(audio_file)
@@ -32,9 +36,7 @@ class Extractor:
             D = librosa.stft(self.args.y, n_fft=self.args.n_fft)
             S_P = np.abs(D)**2
             S_M = librosa.magphase(D)[0]
-            rn_mels = 12
-            n_mels = max(rn_mels, self.args.n_mels)
-            M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=n_mels)
+            M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=self.args.n_mels)
             
             # spectral features
             chroma_stft = librosa.feature.chroma_stft(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
@@ -58,8 +60,7 @@ class Extractor:
             zcr = librosa.feature.zero_crossing_rate(self.args.y, hop_length=self.args.hop_size, frame_length=self.args.n_fft)
             zcr_delta = librosa.feature.delta(zcr, order=2)
             
-            mfcc = librosa.feature.mfcc(S=librosa.power_to_db(M), sr=self.args.sample_rate)
-            mfcc_delta = librosa.feature.delta(mfcc, order=2)
+            mfcc = librosa.feature.mfcc(S=librosa.power_to_db(M), sr=self.args.sample_rate, n_mfcc=13)
             
             poly_features = librosa.feature.poly_features(S=S_M, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
             tonnetz = librosa.feature.tonnetz(y=self.args.y, sr=self.args.sample_rate, chroma=chroma_stft)
@@ -70,11 +71,14 @@ class Extractor:
             fourier_tempogram = librosa.feature.fourier_tempogram(y=self.args.y, sr=self.args.sample_rate, onset_envelope=onset_env, win_length=self.args.window_length)
             tempogram_ratio = librosa.feature.tempogram_ratio(tg=tempogram, sr=self.args.sample_rate, hop_length=self.args.hop_size)
             
-            n_mffc = 20
+            n_mffc = 13
             if mfcc.shape[0] < n_mffc:
                 print(utils.bcolors.YELLOW+"Warning: padding mfcc with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
                 pad_amount = n_mffc - mfcc.shape[0]
                 mfcc = np.pad(mfcc, ((0, pad_amount), (0, 0)), mode='constant')
+            pca_mfcc = PCA(n_components=n_mffc)
+            mfcc = pca_mfcc.fit_transform(mfcc.T).T
+            mfcc_delta = librosa.feature.delta(mfcc, order=2)
             
             fourier_tempogram = np.real(fourier_tempogram)
             n_ftempo = 20
@@ -85,15 +89,16 @@ class Extractor:
             pca_ftempo = PCA(n_components=n_ftempo)
             fourier_tempogram = pca_ftempo.fit_transform(fourier_tempogram.T).T
             
+            rn_mels = 12
             if M.shape[0] < rn_mels:
                 print(utils.bcolors.YELLOW+"Warning: padding mel spectrogram with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
                 pad_amount = rn_mels - M.shape[0]
                 M = np.pad(M, ((0, pad_amount), (0, 0)), mode='constant')
             pca_M = PCA(n_components=rn_mels)
-            M_pca = pca_M.fit_transform(M.T).T
+            M = pca_M.fit_transform(M.T).T
             
             features = {
-                'mel_spec_stdv': M_pca, # 'mel_spec': M,
+                'mel_spec_stdv': M, # 'mel_spec': M,
                 'chroma_stft': chroma_stft,
                 'rms': rms,
                 'spec_bw': spec_bw,
@@ -134,14 +139,14 @@ class Extractor:
                 if type(results[key]) is np.ndarray:
                     results[key] = results[key].tolist()
             
-            results = utils.flatten_dict(results) if flatten_structure else results
+            # results = utils.flatten_dict(results) if flatten_structure else results
             
         except Exception as e:
             print(utils.bcolors.RED+"Error processing", audio_file, ":", str(e)+utils.bcolors.ENDC)
             errors[audio_file] = str(e)
             return errors
                 
-        data = {'id': audio_file, 'stats': results}
+        data = {'id': audio_file, 'path': path, 'stats': results}
         if os.path.isfile(output_file):
             with open(output_file, 'r') as outfile:
                 old_data = json.load(outfile)
@@ -158,5 +163,5 @@ class Extractor:
                 json.dump(data, f, indent=4, sort_keys=True)
     
     def main(self):
-        self.extract(self.args.input_file)
+        self.extract()
 

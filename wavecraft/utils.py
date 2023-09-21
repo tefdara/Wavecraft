@@ -8,12 +8,13 @@ from pyloudnorm import Meter, normalize
 
 # Define color codes for print messages
 class bcolors:
+    WHITE = '\033[97m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
     CYAN = '\033[96m'
     BLUE = '\033[94m'
-    MAGENTA = '\033[97m'
+    MAGENTA = '\033[95m'
     GREY = '\033[37m'
     ENDC = '\033[0m'
 
@@ -203,11 +204,27 @@ def write_metadata(input_file, comment):
         os.replace(tmp_file.name, input_file)
     
         
-def load_json (input_file):
-    # this command will extract the comment metadata from the input file
-    with open (input_file, 'r') as file:
-        data = json.load(file)
+def load_json (input):
+    if os.path.isfile(input):
+        try:
+            with open (input, 'r') as file:
+                data = json.load(file)
+                return data
+        except Exception as e:
+            print(f'{bcolors.RED}Error loading JSON file {input}. {str(e)}{bcolors.ENDC}')
+            return None
+    elif os.path.isdir(input):
+        data = {}
+        for file in os.listdir(input):
+            if file.endswith('.json'):
+                try:
+                    with open (os.path.join(input, file), 'r') as f:
+                        data[file] = json.load(f)
+                except Exception as e:
+                    print(f'{bcolors.RED}Error loading JSON file {file}. {str(e)}{bcolors.ENDC}')
+                    return None
         return data
+        
 def export_json(data, output_path, data_type='metadata'):
     data = data.replace('\n', ',')
     # convert to a dict
@@ -335,7 +352,7 @@ def batch_rename(input_dir, output_dir, prefix, extension):
         os.rename(os.path.join(input_dir, file), os.path.join(output_dir, f'{prefix}_{i}.{extension}'))
         
 def check_format(file):
-    return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']
+    return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3', 'json']
 
 
 def nearest_power_of_2(x):
@@ -354,7 +371,7 @@ def adjust_anal_res(args):
     # win_length = int(n_fft * 0.75)  # set to 75% of n_fft as a starting point
     win_length = int(384 * (scale_factor*0.5))
     n_bins = max(12, int(84 * scale_factor))  # at least 12 bins (for PCA later)
-    n_mels = max(12, int(128 * scale_factor)) 
+    n_mels = int(128 * scale_factor)
     return n_fft, hop_size, win_length, n_bins, n_mels
 
 def flatten_dict(d):
@@ -373,3 +390,52 @@ def flatten_dict(d):
     # make sure stats are represented in order of index
     items = {k: v for k, v in sorted(items.items(), key=lambda item: item[0])}        
     return items
+
+def deep_float_conversion(data):
+    """
+    Recursively convert string numbers to floats in a nested dict.
+    Args:
+        data: The data to convert.
+    Returns:
+        The converted float.
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = deep_float_conversion(value)
+    elif isinstance(data, list):
+        for index, value in enumerate(data):
+            data[index] = deep_float_conversion(value)
+    elif isinstance(data, str):
+        try:
+            # Check if the string can be converted to a float.
+            return float(data)
+        except ValueError:
+            return data
+    return data
+
+def load_dataset(data_path):
+    """
+    Load the data from the data_path.
+    Args:
+        data_path: The path to the data directory.
+    Returns:
+        A list of dictionaries containing the data.
+    """
+    data_dicts = []
+    if os.path.isdir(data_path):
+        for root, dirs, files in os.walk(data_path):
+            for file in files:
+                if file.endswith(".json"):
+                    try:
+                        with open(os.path.join(root, file)) as json_file:
+                            data_content = json.load(json_file)
+                            
+                            # Convert any string numbers to floats in the nested dict.
+                            data_dicts.append(deep_float_conversion(data_content))
+                    except json.JSONDecodeError:
+                        print(f"Error decoding JSON from file: {file}")
+                    except Exception as e:
+                        print(f"Error reading from file {file}. Error: {e}")
+    else:
+       raise ValueError("The data path must be a directory.")
+    return data_dicts

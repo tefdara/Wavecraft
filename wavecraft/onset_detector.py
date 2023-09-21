@@ -12,7 +12,7 @@ import wavecraft.utils as utils
 class OnsetDetector:
     def __init__(self, args):
         self.args = args
-        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
+        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0] + '_segments'
     
     def compute_onsets(self, y, sr, hop_length=512, n_fft=2048, fmin=27.5, fmax=16000., lag=2, max_size=3, env_method='mel'):
         if env_method == 'mel': 
@@ -108,7 +108,7 @@ class OnsetDetector:
         return onsets
 
     async def main(self):
-        # y, sr = librosa.load(self.args.input_file, sr=self.args.sample_rate)
+        # y, sr = librosa.load(self.args.input, sr=self.args.sample_rate)
         # if sr != self.args.sample_rate:
         #     print(f'{utils.bcolors.YELLOW}Loaded Sample rate is {sr}Hz!{utils.bcolors.ENDC}')
         #     print(f'{utils.bcolors.YELLOW}It was resampled from {self.args.sample_rate}Hz to {sr}Hz. Something could have gone wrong.{utils.bcolors.ENDC}')
@@ -119,7 +119,7 @@ class OnsetDetector:
             # wait for the decomposition to finish
             from decomposer import Decomposer
             print(f'{utils.bcolors.YELLOW}Decomposing the signal into harmonic and percussive components...{utils.bcolors.ENDC}')
-            decomposer = Decomposer(self.input_file, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input_file), 'components'))
+            decomposer = Decomposer(self.input, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input), 'components'))
             H, P = await decomposer._decompose_hpss(self.args.y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             if self.decompose == 'harmonic':
                 self.args.y = H
