@@ -24,22 +24,28 @@ Look at the [requirements.txt](requirements.txt) and below for details on how to
 
 ## Usage
 
-To segment an audio file using `wac.py`, run the following command:
+First, if you get a permission error, make sure the script is executable:
 
-```sh
-python wac.py segment input_file.wav output_directory [options]
+```shell
+chmod +x wac.py
+```
+
+To segment an audio file using `wac.py`, run the following command. 
+
+```shell
+./wac.py segment input_file.wav output_directory [options]
 ```
 
 To decompose an audio file using `wac.py`, run the following command:
 
-```sh
-python wac.py decompose input_file.wav [options]
+```shell
+./wac.py decompose input_file.wav [options]
 ```
 
 To perform other operations on an audio file using `wac.py`, run the following command:
 
-```sh
-python wac.py operation [options] arg
+```shell
+./wac.py operation [options] arg
 ```
 
 Where `operation` is the operation to perform, `options` are the options for the operation, and `arg` is the path to the audio, metadata, or dataset file. 
@@ -59,7 +65,7 @@ Replace `operation_name` with the name of the operation you want to perform. The
 For more details on the available operations and options, run:
 
 ```sh
-python wave_craft.py -h
+./wac.py -h
 ```
 
 ## Examples
@@ -71,7 +77,7 @@ Here are some more examples of how to use `Wave Craft`:
 To split an audio file into segments based on a text file, run:
 
 ```sh
-python wac.py segment -i /path/to/audio/file.wav -it /path/to/text/file.txt -o /path/to/output/directory
+./wac.py segment -i /path/to/audio/file.wav -it /path/to/text/file.txt -o /path/to/output/directory
 ```
 
 This will split the audio file into segments based on the text file and save the segments to the output directory.
@@ -81,7 +87,7 @@ This will split the audio file into segments based on the text file and save the
 To extract features from an audio file, run:
 
 ```sh
-python wac.py extract -i /path/to/audio/file.wav -fex mel -fdic True
+./wac.py extract -i /path/to/audio/file.wav -fex mel -fdic True
 ```
 
 This will extract mel spectrogram features from the audio file and save them to a flattened dictionary.
@@ -91,7 +97,7 @@ This will extract mel spectrogram features from the audio file and save them to 
 To calculate proximity metrics for a dataset, run:
 
 ```sh
-python wac.py proxim -i /path/to/dataset -ns 5 -cls stats
+./wac.py proxim -i /path/to/dataset -ns 5 -cls stats
 ```
 
 This will calculate the proximity metrics for the dataset and retrieve the 5 most similar sounds.
