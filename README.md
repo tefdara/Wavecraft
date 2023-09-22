@@ -35,7 +35,7 @@ To decompose an audio file using `wac.py`, run the following command:
 python wac.py decompose input_file.wav `[options]`
 ```
 
-To perform other operations on an audio file using `wave_craft.py`, run the following command:
+To perform other operations on an audio file using `wac.py`, run the following command:
 
 ```sh
 python wac.py operation [options] arg
@@ -103,4 +103,4 @@ This is a work in progress. I'll be updating and expanding it in the coming mont
 
 ## License
 
-`wave_craft.py` is licensed under the MIT License. See the `LICENSE` file for more details.
+`Wave Craft` is licensed under the MIT License. See the `LICENSE` file for more details.
