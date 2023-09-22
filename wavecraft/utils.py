@@ -21,7 +21,7 @@ def extract_metadata(input_file, args):
     # -show_entries format_tags=comment will show the comment metadata
     # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
     command = [
-        'ffprobe',  input_file, '-v', 'quiet', '-show_entries', 'format_tags=comment', '-of', 'default=noprint_wrappers=1:nokey=1',
+        'ffprobe',  input_file, '-v', 'error', '-show_entries', 'format_tags=comment', '-of', 'default=noprint_wrappers=1:nokey=1',
     ]
     output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     if 'not found' in output:
@@ -32,13 +32,26 @@ def extract_metadata(input_file, args):
     # convert dicts to string and format it
     source_m = '\n'.join([f'{k} : {v}' for k, v in source_m.items()])
     seg_m = '\n'.join([f'{k} : {v}' for k, v in seg_m.items()])
+    meta_data = source_m + seg_m
+    # print (meta_data)
     if output is None:
         output = ''
-        output+=str(source_m)
-        output+=str(seg_m)
+        output+=str(meta_data)
     else:
-        output+=str(seg_m)
-        
+        # check if the values are the same
+        for line in meta_data.splitlines():
+            print (line)
+            if line in output:
+                # check if the values are the same
+                if line.split(':')[1].strip() == output.split(':')[1].strip():
+                    continue
+                else:
+                    # if the values are different then replace the old value with the new one
+                    output = output.replace(line, '')
+                    print(f'{bcolors.YELLOW}Overwriting metadata {line}...{bcolors.ENDC}')
+                    output+=str(line)
+            else:
+                output+=str(line)+'\n'
     return output
 
 def generate_metadata(input_file, args):
@@ -49,7 +62,7 @@ def generate_metadata(input_file, args):
     creation_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(creation_time.st_ctime))
     # request the sample rate, bit depth and number of channels using ffprobe
     command = [
-        'ffprobe',  input_file, '-v', 'quiet', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
+        'ffprobe',  input_file, '-v', 'error', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
     output, _ = process.communicate()
@@ -80,6 +93,8 @@ def generate_metadata(input_file, args):
     return source_metadata, segmentation_metadata
 
 def write_metadata(input_file, comment):
+    if input_file.endswith('.json'):
+        return
     if isinstance(comment, list):
         # convert to a string
         comment = '\n'.join(comment)

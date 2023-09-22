@@ -19,7 +19,6 @@ class Segmentor:
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
         prev_metadata = utils.extract_metadata(self.args.input, self.args)
-        
         # segments = librosa.frames_to_samples(segments, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         count = 0
         for i in range(len(segment_samps)):
