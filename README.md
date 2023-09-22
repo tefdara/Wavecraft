@@ -1,9 +1,10 @@
 # Wave-Craft
 Audio segmentation, decomposition and more...
 
-Wave-Craft is a Python-based tool for audio manipulation, segmentation and decomposition. It is built on top of the [librosa](https://librosa.org) library, which provides a wide range of audio processing and analysis tools. Wave-Craft provides a command-line interface for performing various operations on audio files, including segmenting them into smaller samples based on onsets or other methods, decomposing them using various methods, applying filters, writing metadata, normalising, triming, extracting features etc. 
+Wave-Craft is a Python-based tool for audio manipulation, segmentation and decomposition. It's a unification of a lot of small bash and python tools I made to make my life easier. It is built on top of the [librosa](https://librosa.org) library, which provides a wide range of audio processing and analysis tools. `Wave Craft` has a command-line interface for performing various operations on audio files, including segmenting them into smaller samples based on onsets or other methods, decomposing them using various methods, applying filters, writing metadata, normalising, triming, extracting features etc. 
 
-Wave-Craft is a new project of mine and is a work in progress. New features and improvements are being added regularly. It is intended for use by audio engineers, musicians, and anyone else who needs to work with large number audio files.
+This is a new project of mine and is a work in progress. I'll be updating and expanding it in the coming months, years, decades, centuries, and millennia.
+
 
 
 ## Dependencies
@@ -13,13 +14,13 @@ Wave-Craft is a new project of mine and is a work in progress. New features and 
 - `Python` 3.6 or higher
 - `librosa`
 - `soundfile`
-- `numpy` library
+- `numpy`
 - `scipy`
-- `sklearn`
+- `scikit-learn`
 - `pandas`
-- `pyyaml`
 - `pyloudnorm`
 
+Look at the [requirements.txt](requirements.txt) and below for details on how to use the bash script to install the dependencies.
 
 ## Usage
 
@@ -98,7 +99,44 @@ This will calculate the proximity metrics for the dataset and retrieve the 5 mos
 
 Note that some operations may require additional arguments. Use the `--help` option with `wac.py` and the operation name to see the available options for each operation.
 
-This is a work in progress. I'll be updating and expanding it in the coming months, years, decades, centuries, and millennia.
+
+Certainly! Here's a simple `README.md` that explains the script and provides an example `requirements.txt`:
+
+---
+
+# Python Dependency Installation Script
+
+This repository contains a Bash script to automatically install Python dependencies from a `requirements.txt` file.
+
+## Requirements
+
+1. Python
+2. Pip
+
+## Usage
+
+1. Ensure you have the `requirements.txt` file in your project directory with the necessary Python packages listed. It should be in the repo root directory.
+
+It should look like this:
+
+```
+librosa>=0.10.1
+numpy>=1.24.4
+```
+
+2. Make the script executable:
+    ```shell
+    chmod +x install_deps.sh
+    ```
+4. Run the script:
+    ```shell
+    ./install_deps.sh
+    ```
+
+## Troubleshooting
+
+1. **pip not found**: Make sure `pip` is installed. You might need to install or update it.
+2. **requirements.txt not found**: Ensure that the `requirements.txt` file exists in the root directory of `Wave Craft`.
 
 
 ## License
