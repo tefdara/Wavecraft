@@ -1,5 +1,4 @@
 # Wave Craft
-Audio segmentation, decomposition and more...
 
 Wave Craft is a Python-based tool for audio manipulation, segmentation and decomposition. It's a unification of a lot of small bash and python tools I made to make my life easier. It is built on top of the [librosa](https://librosa.org) library, which provides a wide range of audio processing and analysis tools. 
 
