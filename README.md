@@ -103,4 +103,4 @@ This is a work in progress. I'll be updating and expanding it in the coming mont
 
 ## License
 
-`Wave Craft` is licensed under the MIT License. See the `LICENSE` file for more details.
+`Wave Craft` is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
