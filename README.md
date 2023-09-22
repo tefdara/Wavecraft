@@ -27,13 +27,13 @@ Look at the [requirements.txt](requirements.txt) and below for details on how to
 To segment an audio file using `wac.py`, run the following command:
 
 ```sh
-python wac.py segment input_file.wav output_directory `[options]`
+python wac.py segment input_file.wav output_directory [options]
 ```
 
 To decompose an audio file using `wac.py`, run the following command:
 
 ```sh
-python wac.py decompose input_file.wav `[options]`
+python wac.py decompose input_file.wav [options]
 ```
 
 To perform other operations on an audio file using `wac.py`, run the following command:
