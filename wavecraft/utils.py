@@ -1,7 +1,7 @@
 import os, time
 import numpy as np 
 import subprocess, tempfile, json
-
+import logging
 
 # Define color codes for print messages
 class bcolors:
@@ -30,8 +30,8 @@ def extract_metadata(input_file, args):
     
     source_m, seg_m = generate_metadata(input_file, args)
     # convert dicts to string and format it
-    source_m = '\n'.join([f'{k} : {v}' for k, v in source_m.items()])
-    seg_m = '\n'.join([f'{k} : {v}' for k, v in seg_m.items()])
+    source_m = '\n'.join([f'{k}:{v}' for k, v in source_m.items()])
+    seg_m = '\n'.join([f'{k}:{v}' for k, v in seg_m.items()])
     meta_data = source_m + seg_m
     # print (meta_data)
     if output is None:
@@ -40,7 +40,6 @@ def extract_metadata(input_file, args):
     else:
         # check if the values are the same
         for line in meta_data.splitlines():
-            print (line)
             if line in output:
                 # check if the values are the same
                 if line.split(':')[1].strip() == output.split(':')[1].strip():
@@ -51,11 +50,14 @@ def extract_metadata(input_file, args):
                     print(f'{bcolors.YELLOW}Overwriting metadata {line}...{bcolors.ENDC}')
                     output+=str(line)
             else:
-                output+=str(line)+'\n'
+                if line != meta_data.splitlines()[-1]:
+                    output+=str(line)+'\n'
+                else:
+                    output+=str(line)
     return output
 
 def generate_metadata(input_file, args):
-    source_file_name = os.path.basename(input_file).split('.')[0]
+    source_file_name = os.path.basename(input_file)
     # get the file creation time and date from os
     creation_time = os.stat(input_file)
     # convert the timestamp to a human readable format
@@ -109,7 +111,21 @@ def write_metadata(input_file, comment):
         subprocess.run(command)
         # Rename the temporary file to the original file
         os.replace(tmp_file.name, input_file)
-    
+
+def export_metadata(data, output_path, data_type='metadata'):
+    data = data.replace('\n', ',')
+    data_dict = {}
+    data = data.split(',')
+    for item in data:
+        item = item.split(':')
+        data_dict[item[0].strip()] = item[1].strip()
+    output_file = output_path+f'_{data_type}.json'
+    if os.path.exists(output_file):
+        print(f'{bcolors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
+    else:
+        print(f'{bcolors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
+    with open(output_file, 'w') as file:
+        json.dump(data_dict, file, indent=4)
         
 def load_json (input):
     if os.path.isfile(input):
@@ -131,27 +147,9 @@ def load_json (input):
                     print(f'{bcolors.RED}Error loading JSON file {file}. {str(e)}{bcolors.ENDC}')
                     return None
         return data
-        
-def export_json(data, output_path, data_type='metadata'):
-    data = data.replace('\n', ',')
-    # convert to a dict
-    data_dict = {}
-    data_dict['id'] = os.path.basename(output_path)
-    data = data.split(',')
-    for item in data:
-        item = item.split(':')
-        data_dict[item[0].strip()] = item[1].strip()
-    # data = dict(item.split(":") for item in data.split(","))
-    output_file = output_path+f'_{data_type}.json'
-    if os.path.exists(output_file):
-        print(f'{bcolors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
-    else:
-        print(f'{bcolors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
-    with open(output_file, 'w') as file:
-        json.dump(data_dict, file, indent=4)
     
 
-def scientific_notation_to_float(array, precision=2):
+def sci_note_to_float(array, precision=2):
         
     if isinstance(array, np.ndarray):
         if array.size == 0:
@@ -258,3 +256,38 @@ def load_dataset(data_path):
     else:
        raise ValueError("The data path must be a directory.")
     return data_dicts
+
+def get_logger(type, name):
+    logger = logging.Logger(name)
+    handler = logging.StreamHandler()
+    logger.setLevel(logging.INFO)
+    handler.setLevel(logging.INFO)
+    
+    if type == 'info':
+        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(prepend)s \033[96m%(message)s\033[0m %(append)s...')
+    elif type == 'stat':
+        formatter = logging.Formatter('\n[ \033[92mSTAT\033[0m ] \033[92m%(message)s\033[0m')
+    elif type == 'value':
+        formatter = logging.Formatter('%(message)-18s \033[96m %(value)s\033[0m (%(unit)s)')
+    elif type == 'error':
+        logger.setLevel(logging.ERROR)
+        handler.setLevel(logging.ERROR)
+        formatter = logging.Formatter('[ \033[91m%(levelname)s ] %(message)s\033[0m')
+    elif type == 'warning':
+        logger.setLevel(logging.WARNING)
+        handler.setLevel(logging.WARNING)
+        formatter = logging.Formatter('[ \033[93m%(levelname)s ] %(message)s\033[0m')
+    elif type == 'debug':
+        logger.setLevel(logging.DEBUG)
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(message)s')
+        
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger    
+        
+def extra_log_string(prepend, append):
+    return {'prepend': prepend, 'append': append}   
+
+def extra_log_value(value, unit):
+    return {'value': value, 'unit': unit}

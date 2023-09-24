@@ -4,7 +4,7 @@ Wave Craft is a Python-based tool for audio manipulation, segmentation and decom
 
 Wave Craft has a command-line interface for performing various operations on audio files, including segmenting them into smaller samples based on onsets or other methods, decomposing them using various methods, applying filters, writing metadata, normalising, triming, extracting features etc. 
 
-This is a new project of mine and is a work in progress. I'll be updating and expanding it in the coming months, years, decades, centuries, and millennia.
+This is a new project of mine and is a work in progress. I'll be updating and expanding it in the coming months, years and decades.
 
 
 

@@ -1,5 +1,6 @@
 import os, sys
 import librosa
+import logging
 import argparse
 import soundfile as sf
 import utils
@@ -44,13 +45,12 @@ class Segmentor:
             segment = self.processor.filter(segment, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
             segment = self.processor.normalise_audio(segment, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
-            print(f'{utils.bcolors.CYAN}Saving segment {count} to {segment_path}.{utils.bcolors.ENDC}')
-            print(f'{utils.bcolors.BLUE}length: {segment_length}s{utils.bcolors.ENDC}')
             # Save segment to a new audio file
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
+            print(f'{utils.bcolors.CYAN}Saving segment {count} to {segment_path}.{utils.bcolors.ENDC} {utils.bcolors.BLUE}length: {segment_length}s{utils.bcolors.ENDC}\n')
             utils.write_metadata(segment_path, prev_metadata)
 
-        utils.export_json(prev_metadata, self.base_segment_path, data_type='seg_metadata')
+        utils.export_metadata(prev_metadata, self.base_segment_path, data_type='seg_metadata')
                 
         
         print(f'\n[{utils.bcolors.GREEN}Done{utils.bcolors.ENDC}]\n')
