@@ -131,10 +131,6 @@ class Processor:
     
     @mode_handler
     def trim(self, y, threshold=20, frame_length=2048, hop_length=512):
-        # margin = int(self.sample_rate * 0.1)
-        # y = y[margin:-margin]
-        # return librosa.effects.trim(
-        #     y, top_db=40, frame_length=1024, hop_length=256)[0]
         if len(y.shape) == 1:
             yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
             return yt, indices

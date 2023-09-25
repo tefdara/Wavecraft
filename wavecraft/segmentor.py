@@ -5,7 +5,7 @@ import argparse
 import soundfile as sf
 import utils
 import asyncio
-from wavecraft import utils, beat_detector, onset_detector, Processor
+from wavecraft import utils, BeatDetector, OnsetDetector, Processor
 class Segmentor:
     def __init__(self, args):
         self.args = args
@@ -99,10 +99,10 @@ class Segmentor:
                 
     def main(self):
         if self.args.segmentation_method == 'onset':
-            detector = onset_detector(self.args)
+            detector = OnsetDetector(self.args)
             segments = asyncio.run(detector.main())
         elif self.args.segmentation_method == 'beat':
-            detector = beat_detector(self.args)
+            detector = BeatDetector(self.args)
             segments = detector.main()
         
         user_input = input(f'{utils.bcolors.GREEN}Choose an action:{utils.bcolors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')

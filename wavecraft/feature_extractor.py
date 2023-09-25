@@ -6,37 +6,40 @@ import wavecraft.utils as utils
 from sklearn.decomposition import PCA
 
 class Extractor:
-    def __init__(self, args):
+    def __init__(self, args, mode='extract'):
         self.args = args
-        # self.args.ignore_descs = ['analysis', 'bit_rate', 'number_channels', 'sample_rate','codec', 'md5_encoded', 'tags', 'version', 'lossless']
-        
-    def extract(self):
-        
-        path = self.args.input
-        audio_file = os.path.basename(path)
+        self.mode = mode
+        self.file_name = os.path.basename(self.args.input)
         output_dir = self.args.output_directory
-        flatten_structure = self.args.flatten_dictionary
         
         if not output_dir:
-            file_dir = os.path.dirname(audio_file)
+            file_dir = os.path.dirname(self.file_name)
             output_dir = os.path.join(file_dir, 'analysis')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
-        output_file = os.path.join(output_dir, os.path.splitext(audio_file)[0]+'_analysis.json')
+        self.output_file = os.path.join(output_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
+        output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
+        if not os.path.exists(output_cache_dir):
+            os.makedirs(output_cache_dir)
+        
+        self.output_cache = os.path.join(output_cache_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
+        self.error_logger = utils.get_logger('error', 'extract_error')
+        self.warning_logger = utils.get_logger('warning', 'extract_warning')
+        
+    def extract(self):
+                   
         errors = {}
         results = {}
-        
-        if not output_dir:
-            file_dir = os.path.dirname(audio_file)
-            output_dir = os.path.join(file_dir, 'analysis')
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
         try:
             D = librosa.stft(self.args.y, n_fft=self.args.n_fft)
             S_P = np.abs(D)**2
             S_M = librosa.magphase(D)[0]
-            M = librosa.feature.melspectrogram(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, n_mels=self.args.n_mels)
+            M = librosa.feature.melspectrogram(S=S_P, 
+                                               sr=self.args.sample_rate, 
+                                               n_fft=self.args.n_fft, 
+                                               hop_length=self.args.hop_size, 
+                                               n_mels=self.args.n_mels)
             
             # spectral features
             chroma_stft = librosa.feature.chroma_stft(S=S_P, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
@@ -73,7 +76,7 @@ class Extractor:
             
             n_mffc = 13
             if mfcc.shape[0] < n_mffc:
-                print(utils.bcolors.YELLOW+"Warning: padding mfcc with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                self.warning_logger.warning("Padding mfcc with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_mffc - mfcc.shape[0]
                 mfcc = np.pad(mfcc, ((0, pad_amount), (0, 0)), mode='constant')
             pca_mfcc = PCA(n_components=n_mffc)
@@ -83,7 +86,7 @@ class Extractor:
             fourier_tempogram = np.real(fourier_tempogram)
             n_ftempo = 20
             if fourier_tempogram.shape[0] < n_ftempo:
-                print(utils.bcolors.YELLOW+"Warning: padding fourier tempogram with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                self.warning_logger.warning("Padding fourier tempogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_ftempo - fourier_tempogram.shape[0]
                 fourier_tempogram = np.pad(fourier_tempogram, ((0, pad_amount), (0, 0)), mode='constant')
             pca_ftempo = PCA(n_components=n_ftempo)
@@ -91,7 +94,7 @@ class Extractor:
             
             rn_mels = 12
             if M.shape[0] < rn_mels:
-                print(utils.bcolors.YELLOW+"Warning: padding mel spectrogram with zeros to match the number of rows of the PCA matrix"+utils.bcolors.ENDC)
+                self.warning_logger.warning("Padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = rn_mels - M.shape[0]
                 M = np.pad(M, ((0, pad_amount), (0, 0)), mode='constant')
             pca_M = PCA(n_components=rn_mels)
@@ -139,14 +142,21 @@ class Extractor:
                 if type(results[key]) is np.ndarray:
                     results[key] = results[key].tolist()
             
-            # results = utils.flatten_dict(results) if flatten_structure else results
+            results = utils.flatten_dict(results) if self.args.flatten_dictionary else results
             
         except Exception as e:
-            print(utils.bcolors.RED+"Error processing", audio_file, ":", str(e)+utils.bcolors.ENDC)
-            errors[audio_file] = str(e)
+            print(utils.bcolors.RED+"Error processing", self.file_name, ":", str(e)+utils.bcolors.ENDC)
+            errors[self.file_name] = str(e)
             return errors
+        
+        if self.mode == 'extract':
+            self.save(results, self.output_file)
+            self.save(results, self.output_cache)
+        elif self.mode == 'learn':
+            self.save(results, self.output_cache)
                 
-        data = {'id': audio_file, 'path': path, 'stats': results}
+    def save(self, results, output_file):
+        data = {'id': self.file_name, 'path': self.args.input, 'stats': results}
         if os.path.isfile(output_file):
             with open(output_file, 'r') as outfile:
                 old_data = json.load(outfile)

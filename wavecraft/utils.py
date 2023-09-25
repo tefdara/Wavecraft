@@ -177,17 +177,26 @@ def nearest_power_of_2(x):
     return 2**np.floor(np.log2(x))
 
 def adjust_anal_res(args):
+    """Adjust the analysis resolution based on the duration of the audio.
+    Args:
+        args: The arguments from the command line.
+        Returns:
+        n_fft: The number of samples in each frame.
+        hop_size: The number of samples between successive frames.
+        win_length: The number of samples in each window.
+        n_bins: The number of frequency bins.
+        n_mels: The number of mel bins.
+    """
     if args.duration > 5.0:
         return args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels
-    scale_factor = min(args.duration, 5.0) / 5.0  # scale based on a 5-second reference
+    scale_factor = min(args.duration, 5.0) * 0.2 # scale based on a 5-second reference
     length = args.y.shape[-1]
     n_fft = int(nearest_power_of_2(args.n_fft * scale_factor))
     n_fft = min(n_fft, length)
-
-    hop_size = int(n_fft / 4)  
-    # win_length = int(n_fft * 0.75)  # set to 75% of n_fft as a starting point
+    hop_size = max(8, int(n_fft * 0.25))
+    # win_length = int(n_fft * 0.75) 
     win_length = int(384 * (scale_factor*0.5))
-    n_bins = max(12, int(84 * scale_factor))  # at least 12 bins (for PCA later)
+    n_bins = max(12, int(84 * scale_factor))
     n_mels = int(128 * scale_factor)
     return n_fft, hop_size, win_length, n_bins, n_mels
 
@@ -276,7 +285,7 @@ def get_logger(type, name):
     elif type == 'warning':
         logger.setLevel(logging.WARNING)
         handler.setLevel(logging.WARNING)
-        formatter = logging.Formatter('[ \033[93m%(levelname)s ] %(message)s\033[0m')
+        formatter = logging.Formatter('[\033[93m%(levelname)s\033[0m] %(message)s')
     elif type == 'debug':
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
