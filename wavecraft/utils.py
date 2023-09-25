@@ -294,6 +294,7 @@ def get_logger(type, name):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
+
         
 def extra_log_string(prepend, append):
     return {'prepend': prepend, 'append': append}   
