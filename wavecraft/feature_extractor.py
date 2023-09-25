@@ -19,13 +19,8 @@ class Extractor:
             os.makedirs(output_dir)
         
         self.output_file = os.path.join(output_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
-        output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
-        if not os.path.exists(output_cache_dir):
-            os.makedirs(output_cache_dir)
-        
+        output_cache_dir = utils.get_analysis_path()
         self.output_cache = os.path.join(output_cache_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
-        self.error_logger = utils.get_logger('error', 'extract_error')
-        self.warning_logger = utils.get_logger('warning', 'extract_warning')
         
     def extract(self):
                    
@@ -76,7 +71,7 @@ class Extractor:
             
             n_mffc = 13
             if mfcc.shape[0] < n_mffc:
-                self.warning_logger.warning("Padding mfcc with zeros to match the number of rows of the PCA matrix")
+                utils.warning_logger.warning("Padding mfcc with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_mffc - mfcc.shape[0]
                 mfcc = np.pad(mfcc, ((0, pad_amount), (0, 0)), mode='constant')
             pca_mfcc = PCA(n_components=n_mffc)
@@ -86,7 +81,7 @@ class Extractor:
             fourier_tempogram = np.real(fourier_tempogram)
             n_ftempo = 20
             if fourier_tempogram.shape[0] < n_ftempo:
-                self.warning_logger.warning("Padding fourier tempogram with zeros to match the number of rows of the PCA matrix")
+                utils.warning_logger.warning("Padding fourier tempogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_ftempo - fourier_tempogram.shape[0]
                 fourier_tempogram = np.pad(fourier_tempogram, ((0, pad_amount), (0, 0)), mode='constant')
             pca_ftempo = PCA(n_components=n_ftempo)
@@ -94,7 +89,7 @@ class Extractor:
             
             rn_mels = 12
             if M.shape[0] < rn_mels:
-                self.warning_logger.warning("Padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
+                utils.warning_logger.warning("Padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = rn_mels - M.shape[0]
                 M = np.pad(M, ((0, pad_amount), (0, 0)), mode='constant')
             pca_M = PCA(n_components=rn_mels)

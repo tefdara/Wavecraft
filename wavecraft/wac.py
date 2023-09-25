@@ -17,13 +17,11 @@ def main(args):
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
     files = load_files(args.input)
-                
-    info_logger = utils.get_logger('info', 'wavecraft')
-    error_logger = utils.get_logger('error', 'wavecraft')
     print('')
     
     if args.operation == "proxim":
-        info_logger.info('Calculating proximity metric')
+        extra = utils.extra_log_string('Calculating', '')
+        utils.info_logger.info('proximity metric', extra=extra)
         craft = ProxiMetor(args)
         craft.main()
         return
@@ -42,10 +40,10 @@ def main(args):
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
             except RuntimeError:
-                error_logger.error(f'Could not load {file}!')
+                utils.error_logger.error(f'Could not load {file}!')
                 continue
             if not librosa.util.valid_audio(args.y):
-                error_logger.error(f'{file} is not a valid audio file!')
+                utils.error_logger.error(f'{file} is not a valid audio file!')
         
         args.num_samples = args.y.shape[-1]
         args.duration = args.num_samples / args.sample_rate
@@ -53,43 +51,43 @@ def main(args):
         args.num_frames = int(args.num_samples / args.hop_size)
         extra = utils.extra_log_string('', f'{os.path.basename(file)}')
         if args.operation == "segment":
-            info_logger.info('Segmenting', extra=extra)
+            utils.info_logger.info('Segmenting', extra=extra)
             craft = Segmentor(args)
             craft.main()
         elif args.operation == "extract":
-            info_logger.info('Extracting features for', extra=extra)
+            utils.info_logger.info('Extracting features for', extra=extra)
             craft = Extractor(args)
             craft.main()
         elif args.operation == "onset":
-            info_logger.info('Detecting onsets for', extra=extra)
+            utils.info_logger.info('Detecting onsets for', extra=extra)
             craft = OnsetDetector(args)
             craft.main()
         elif args.operation == "beat":
-            info_logger.info('Detecting beats for', extra=extra)
+            utils.info_logger.info('Detecting beats for', extra=extra)
             craft = BeatDetector(args)
             craft.main()
         elif args.operation == "decomp":
-            info_logger.info('Decomposing', extra=extra)
+            utils.info_logger.info('Decomposing', extra=extra)
             craft = Decomposer(args)
             craft.main()
         elif args.operation == "filter":
-            info_logger.info('Applying filter', extra=extra)
+            utils.info_logger.info('Applying filter', extra=extra)
             processor.filter(args.y, args.sample_rate, args.filter_frequency, args.filter_type)
         elif args.operation == "norm":
-            info_logger.info('Normalising', extra=extra)
+            utils.info_logger.info('Normalising', extra=extra)
             processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode)                    
             
         else:
             if args.operation == "wmeta":
-                info_logger.info('Writing metadata', extra=extra)
+                utils.info_logger.info('Writing metadata', extra=extra)
                 if(args.meta_file):
                     args.meta = utils.load_json(args.meta_file)
                 else:
-                    error_logger.error('No metadata file provided!')
+                    utils.error_logger.error('No metadata file provided!')
                     sys.exit()
                 utils.write_metadata(file, args.meta)
             if args.operation == "rmeta":
-                info_logger.info('Extracting metadata', extra=extra)
+                utils.info_logger.info('Extracting metadata', extra=extra)
                 utils.extract_metadata(file, args)
             
         args.n_fft = n_fft

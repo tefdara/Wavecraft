@@ -1,16 +1,25 @@
 #!/usr/bin/env python3.9
 
-import asyncio, argparse, yaml, sys, os, shutil
+import asyncio, yaml, sys, os, shutil
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
-import wavecraft.utils as utils
+import wavecraft.utils as utils, wavecraft.feature_extractor as fe
+
 
 class ProxiMetor:
     def __init__(self, args):
         self.args = args
-        self.data_path = os.path.abspath(self.args.input)
+        if os.path.isdir(self.args.input):
+            self.audio_path = os.path.abspath(self.args.input)
+            self.data_path = os.path.join(self.audio_path, 'analysis')
+            if not os.path.exists(self.data_path):
+                self.data_path = utils.get_analysis_path()
+        else:
+            utils.error_logger.error('Invalid input! Please provide a directory for proximity analysis.')
+            sys.exit(1)
+            
         self.ops = None
         self.base_path = './similar_files'
         if(self.args.ops):
@@ -239,6 +248,12 @@ class ProxiMetor:
         all_files.difference_update(used_files)
         
     def main(self):
+        utils.message_logger.info(f'Checking directory')
+        for sound in os.listdir(self.args.input):
+            if not os.path.exists(os.path.join(self.data_path, sound + "_analysis.json")):
+                utils.error_logger.error(sound + ' has not been analyzed. Please run wavecraft extract first.')
+                sys.exit(1)
+                
         data = utils.load_dataset(self.data_path)
         # Convert to DataFrame
         df = pd.json_normalize(data, sep="_")

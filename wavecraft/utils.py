@@ -281,7 +281,7 @@ def get_logger(type, name):
     elif type == 'error':
         logger.setLevel(logging.ERROR)
         handler.setLevel(logging.ERROR)
-        formatter = logging.Formatter('[ \033[91m%(levelname)s ] %(message)s\033[0m')
+        formatter = logging.Formatter('[ \033[91m%(levelname)s \033[0m] \033[91m%(message)s\033[0m')
     elif type == 'warning':
         logger.setLevel(logging.WARNING)
         handler.setLevel(logging.WARNING)
@@ -290,6 +290,11 @@ def get_logger(type, name):
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(message)s')
+    elif type == 'message':
+        logger.setLevel(logging.DEBUG)
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(message)s...')
+        
         
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -301,3 +306,16 @@ def extra_log_string(prepend, append):
 
 def extra_log_value(value, unit):
     return {'value': value, 'unit': unit}
+
+info_logger = get_logger('info', 'wavecraft')
+error_logger = get_logger('error', 'wavecraft')
+statlogger = get_logger('stat', 'wavecraft')
+value_logger = get_logger('value', 'wavecraft')
+message_logger = get_logger('message', 'wavecraft')
+
+
+def get_analysis_path():
+    output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
+    if not os.path.exists(output_cache_dir):
+            os.makedirs(output_cache_dir)
+    return output_cache_dir

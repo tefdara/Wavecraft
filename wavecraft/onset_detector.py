@@ -8,10 +8,7 @@ import traceback
 import asyncio
 import wavecraft.utils as utils
 
-info_logger = utils.get_logger('info', 'onset_info')
-error_logger = utils.get_logger('error', 'onset_error')
-statlogger = utils.get_logger('stat', 'onset_stat')
-value_logger = utils.get_logger('value', 'onset_value')
+
 class OnsetDetector:
     def __init__(self, args):
         self.args = args
@@ -22,7 +19,7 @@ class OnsetDetector:
         extra = utils.extra_log_string(prepend='Using', append='for onset detection.')
         
         if env_method == 'mel': 
-            info_logger.info('mel spectrogram', extra=extra)
+            utils.info_logger.info('mel spectrogram', extra=extra)
             mel_spectogram = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=138, fmin=fmin, fmax=fmax)
             S = librosa.power_to_db(mel_spectogram, ref=np.max)
             o_env = librosa.onset.onset_strength(S=S,
@@ -30,7 +27,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'rms':
-            info_logger.info('rms', extra=extra)
+            utils.info_logger.info('rms', extra=extra)
             S = np.abs(librosa.stft(y=y))
             rms = librosa.feature.rms(S=S, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=rms[0],
@@ -38,42 +35,42 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cens':
-            info_logger.info('chroma cens', extra=extra)
+            utils.info_logger.info('chroma cens', extra=extra)
             cens = librosa.feature.chroma_cens(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cens,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cqt_chr':
-            info_logger.info('chroma cqt', extra=extra)
+            utils.info_logger.info('chroma cqt', extra=extra)
             cqt_chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cqt_chroma,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'mfcc':
-            info_logger.info('mfcc', extra=extra)
+            utils.info_logger.info('mfcc', extra=extra)
             mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13, n_mels=138, fmin=fmin, fmax=fmax)
             o_env = librosa.onset.onset_strength(S=mfcc,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tmpg':
-            info_logger.info('tempogram', extra=extra)
+            utils.info_logger.info('tempogram', extra=extra)
             tempogram = librosa.feature.tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'ftmpg':
-            info_logger.info('fourier tempogram', extra=extra)
+            utils.info_logger.info('fourier tempogram', extra=extra)
             fourier_tempogram = librosa.feature.fourier_tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=fourier_tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tonnetz':
-            info_logger.info('tonnetz', extra=extra)
+            utils.info_logger.info('tonnetz', extra=extra)
             tonnetz = librosa.feature.tonnetz(y=y, sr=sr, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=tonnetz,
                                                   sr=sr,
@@ -119,11 +116,11 @@ class OnsetDetector:
         segs = onset_times + [self.args.duration]
         segment_lengths = np.around(np.diff(segs),5).tolist()
         
-        statlogger.info(f'Detected {len(onsets)} onsets:')
+        utils.statlogger.info(f'Detected {len(onsets)} onsets:')
         length_val = utils.extra_log_value(round(self.args.duration, 5), 'seconds')
-        value_logger.info(f'File length: ', extra=length_val)
+        utils.value_logger.info(f'File length: ', extra=length_val)
         frame_val = utils.extra_log_value(self.args.num_frames,'frames')
-        value_logger.info(f'Frame count: ', extra=frame_val)
+        utils.value_logger.info(f'Frame count: ', extra=frame_val)
 
         # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
         if len(onsets) > 15:
@@ -142,9 +139,9 @@ class OnsetDetector:
         frames_val = utils.extra_log_value(onsets_c if len(onsets) > 12 else onsets, 'frames')
         times_val = utils.extra_log_value(onset_times_c if len(onsets) > 12 else onset_times, 'seconds')
         lengths_val = utils.extra_log_value(segment_lengths_c if len(onsets) > 12 else segment_lengths, 'seconds')
-        value_logger.info(f'Onset Frames: ', extra=frames_val)
-        value_logger.info(f'Onset times: ', extra=times_val)
-        value_logger.info(f'Segment lengths: ', extra=lengths_val)
+        utils.value_logger.info(f'Onset Frames: ', extra=frames_val)
+        utils.value_logger.info(f'Onset times: ', extra=times_val)
+        utils.value_logger.info(f'Segment lengths: ', extra=lengths_val)
         print('')
         return onsets
 
@@ -171,6 +168,6 @@ if __name__ == '__main__':
     try:
         asyncio.run(onset_detector.main())
     except Exception as e:
-        error_logger.error(e)
+        utils.error_logger.error(e)
         traceback.print_exc()
         sys.exit(1)
