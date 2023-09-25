@@ -25,7 +25,7 @@ def main(args):
     
     if args.operation == "proxim":
         info_logger.info('Calculating proximity metric')
-        craft = proxi_metor(args)
+        craft = ProxiMetor(args)
         craft.main()
         return
     
@@ -55,23 +55,23 @@ def main(args):
             
             if args.operation == "segment":
                 info_logger.info('Segmenting', extra=extra)
-                craft = segmentor(args)
+                craft = Segmentor(args)
                 craft.main()
             elif args.operation == "extract":
                 info_logger.info('Extracting features', extra=extra)
-                craft = extractor(args)
+                craft = Extractor(args)
                 craft.main()
             elif args.operation == "onset":
                 info_logger.info('Detecting onsets', extra=extra)
-                craft = onset_detector(args)
+                craft = OnsetDetector(args)
                 craft.main()
             elif args.operation == "beat":
                 info_logger.info('Detecting beats', extra=extra)
-                craft = beat_detector(args)
+                craft = BeatDetector(args)
                 craft.main()
             elif args.operation == "decomp":
                 info_logger.info('Decomposing', extra=extra)
-                craft = decomposer(args)
+                craft = Decomposer(args)
                 craft.main()
             elif args.operation == "filter":
                 info_logger.info('Applying filter', extra=extra)
