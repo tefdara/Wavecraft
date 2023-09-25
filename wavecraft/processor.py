@@ -52,10 +52,8 @@ class Processor:
         # convert fade duration to samples
         fade_duration_samples = int(fade_duration * sr / 1000)
         
-        # If fade_duration_samples is larger than the segment
-        fade_duration_samples = min(fade_duration_samples, audio.shape[0])
+        fade_duration_samples = min(fade_duration_samples, audio.shape[-1])
         
-        # switch between different curve types
         if curve_type == 'exp':
             fade_curve = np.linspace(0.0, 1.0, fade_duration_samples) ** 2
         elif curve_type == 'log':
@@ -68,10 +66,13 @@ class Processor:
         elif curve_type == 'hann':
             fade_curve = np.hanning(fade_duration_samples) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
         
-        # Apply fade-in to the beginning and fade-out to the end for each channel
-        for ch in range(audio.shape[1]): # For each channel
-            audio[:fade_duration_samples, ch] *= fade_curve
-            audio[-fade_duration_samples:, ch] *= fade_curve[::-1] # reverse the curve for fade-out
+        if len(audio.shape) == 1:
+            audio[:fade_duration_samples] *= fade_curve
+            audio[-fade_duration_samples:] *= fade_curve[::-1]
+        else:
+            for ch in range(audio.shape[1]): # For each channel
+                audio[:fade_duration_samples, ch] *= fade_curve
+                audio[-fade_duration_samples:, ch] *= fade_curve[::-1] # reverse the curve for fade-out
             
         return audio
 

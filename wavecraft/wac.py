@@ -29,7 +29,6 @@ def main(args):
     if process:
         processor = Processor(args, mode='render')
 
-    # process each file
     for file in files:
         args.input = file
         if dsp:
