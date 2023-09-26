@@ -132,19 +132,18 @@ def load_files(input):
 if __name__ == "__main__":
     
     formatter_class=lambda prog: argparse.HelpFormatter(prog,
-    max_help_position=50, width=130, indent_increment=3)
-    usage = "usage: wave_craft.py operation [options] arg"
-    help = "wave_craft.py -h, --help for more details"
-    parser = argparse.ArgumentParser(prog='Wave Craft', description="Split audio files based on segments from a text file.", 
-                                     usage=usage +'\n'+help, formatter_class=formatter_class)
+    max_help_position=8, width=80, indent_increment=4)
+    usage = "wave_craft.py operation [options] arg"
+    parser = argparse.ArgumentParser(prog='Wave Craft', description="A command line tool for audio manipulation", epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
+                                     usage=usage, formatter_class=formatter_class)
     
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "wmeta", "rmeta", "info"], 
-                    help="Operation to perform:\
-                    segment:segmentaion, extract:feature extraction, proxim: proximity learning, onset:onset detection, beat:beat detection, decomp:decomposition, filter:filter, norm:normalisation, fade:fade, wmeta:write metadata, rmeta:read metadata, info:file info",
-                    metavar='operation',
-                    nargs='?')
-    parser.add_argument("input", type=str, help="Path to the audio, metadata or dataset file. It can be a directory for batch processing. It is valid for all operations")
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "wmeta", "rmeta"], 
+                    help="Operation to perform. See below for details on each operation.",
+                    metavar='operation', nargs='?')
+    parser.add_argument("input", type=str, 
+                    help="Path to the audio, metadata or dataset file. It can be a directory for batch processing. It is valid for all operations\n ")
     
+    parser._action_groups[0].title = "Required arguments"
     parser._action_groups[1].title = "Help"
     
     # IO
@@ -222,15 +221,19 @@ if __name__ == "__main__":
     normalization_group.add_argument("-nl", "--normalisation-level", type=float, default=-3, required=False,
                         help="Normalisation level, default is -3 db.", metavar='')
     normalization_group.add_argument("-nm", "--normalisation-mode", type=str, default="peak", choices=["peak", "rms", "loudness"], 
-                        help="Normalisation mode; default is RMS.", required=False, metavar='')
+                        help="Normalisation mode; default is 'peak'.", required=False, metavar='')
     
     # Metadata 
     metadata_group = parser.add_argument_group(title='Metadata - writes or reads metadata to/from the audio file', description='operations -> wmeta, rmeta')
     metadata_group.add_argument("--meta", type=str, help="List of metadata or comments to write to the file. Default is None.", required=False, nargs='+', metavar='')
     metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False, metavar='')
 
+    # trim
+    trim_group = parser.add_argument_group(title='Trim - trims the audio file', description='operation -> trim')
+    trim_group.add_argument("-tt", "--trim-time", type=str, default=None, help="Trim position in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. >0.5).", required=False, metavar='')
+    
     fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file', description='operation -> fade')
-    info = parser.add_argument_group(title='Info - displays information about the audio file', description='operation -> info')
+    
     args = parser.parse_args()
     main(args)
     

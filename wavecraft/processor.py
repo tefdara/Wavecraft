@@ -134,7 +134,7 @@ class Processor:
             raise ValueError(f"Unknown normalization type: {mode}")
     
     @mode_handler
-    def trim(self, y, threshold=20, frame_length=2048, hop_length=512):
+    def trim_ends(self, y, threshold=20, frame_length=2048, hop_length=512):
         if len(y.shape) == 1:
             yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
             return yt, indices
@@ -156,7 +156,12 @@ class Processor:
 
         else:
             print(f'{utils.bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.bcolors.ENDC}')
-
+    @mode_handler
+    def trim_range(self, y, sr, start, end):
+        start_idx = int(start * sr)
+        end_idx = int(end * sr)
+        return y[start_idx:end_idx]
+    
     @mode_handler
     def trim_after_last_silence(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
         """
