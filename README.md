@@ -39,13 +39,14 @@ To perform operations on an audio file using `wac.py`, run the following command
 
 Where `operation` is the operation to perform, `options` are the options for the operation, and `arg` is the path to the audio, metadata, or dataset file. 
 
-Replace `operation_name` with the name of the operation you want to perform. The available operations so far are. All the operations can be done on a single file or a directory of files:
+Replace `operation_name` with the name of the operation you want to perform. The available operations so far are. All the operations can be done on a single file or batch process a directory of files:
 
 - `segment`: Segment an audio file based on onsets or other methods.
 - `extract`: Extract features from an audio file.
 - `proxim`: Calculate proximity metrics for a dataset. It can find the most similar sounds in a dataset based on various metrics.
 - `decompose`: Decompose an audio file using various methods.
 - `filter`: Apply filters to an audio files.
+- `fade`: Apply fades to an audio file.
 - `norm`: Normalise an audio file.
 - `wmetadata`: Write metadata to an audio file.
 - `info`: Get information about an audio file.
@@ -64,10 +65,10 @@ Here are some examples of how to use `Wave Craft`:
 ### Segment an audio file based on onsets / beats using different onset envelopes
 
 ```shell
-./wac.py segment -i input_file.wav [options]
+./wac.py segment input_file.wav [options]
 ```
 ```shell
-./wac.py segment -i input_file.wav -t 0.2 -oe mel -ts -70 -ff 50
+./wac.py segment input_file.wav -t 0.2 -oe mel -ts -70 -ff 50
 ```
 
 This will segment the audio file into smaller samples based on onsets using a mel spectogram as the onset envelope. It will use a peak threshold of 0.2 and trims silence from both ends of the file if its below -70db and apply a high-pass filter with a cutoff frequency of 50Hz.
@@ -77,7 +78,7 @@ This will segment the audio file into smaller samples based on onsets using a me
 To split an audio file into segments based on a text file, run:
 
 ```sh
-./wac.py segment -i /path/to/audio/file.wav -it /path/to/text/file.txt
+./wac.py segment /path/to/audio/file.wav t /path/to/text/file.txt
 ```
 
 This will split the audio file into segments based on the text file and save the segments to the output directory.
@@ -87,7 +88,7 @@ This will split the audio file into segments based on the text file and save the
 To extract features from an audio file, run:
 
 ```sh
-./wac.py extract -i /path/to/audio/file.wav -fdic True
+./wac.py extract /path/to/audio/file.wav -fdic True
 ```
 
 This will extract all the features from the audio file and save them to a flattened dictionary in a JSON file.
@@ -97,7 +98,7 @@ This will extract all the features from the audio file and save them to a flatte
 To calculate proximity metrics for a dataset, run:
 
 ```sh
-./wac.py proxim -i /path/to/dataset -ns 5 -cls stats
+./wac.py proxim /path/to/dataset -ns 5 -cls stats
 ```
 
 This will calculate the proximity metrics for the dataset and retrieve the 5 most similar sounds.
@@ -106,7 +107,7 @@ This will calculate the proximity metrics for the dataset and retrieve the 5 mos
 ### Decomposing an audio file
 
 ```shell
-./wac.py decompose -i input_file.wav [options]
+./wac.py decompose input_file.wav [options]
 ```
 
 
