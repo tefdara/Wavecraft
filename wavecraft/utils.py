@@ -82,7 +82,8 @@ def generate_metadata(input_file, args):
         segmentation_metadata['seg_onset_envelope'] = args.onset_envelope
     segmentation_metadata['seg_normalise_mode'] = args.normalisation_mode
     segmentation_metadata['seg_normalise_level'] = args.normalisation_level
-    segmentation_metadata['seg_fade_duration'] = args.fade_duration
+    segmentation_metadata['seg_fade_in_duration'] = args.fade_in
+    segmentation_metadata['seg_fade_out_duration'] = args.fade_out
     segmentation_metadata['seg_fade_curve'] = args.curve_type
     segmentation_metadata['seg_filter_frequency'] = args.filter_frequency
     segmentation_metadata['seg_filter_type'] = args.filter_type + 'pass'
@@ -319,3 +320,27 @@ def get_analysis_path():
     if not os.path.exists(output_cache_dir):
             os.makedirs(output_cache_dir)
     return output_cache_dir
+
+def compute_curve(x, curve_type='exp'):
+    """Compute a curve of length x.
+    Args:
+        x: The length of the curve in samples.
+        curve_type: The type of curve to compute.
+    Returns:
+        The curve.
+    """
+    if curve_type == 'exp':
+        fade_curve = np.linspace(0.0, 1.0, x) ** 2
+    elif curve_type == 'log':
+        fade_curve = np.sqrt(np.linspace(0.0, 1.0, x))
+    elif curve_type == 'linear':
+        fade_curve = np.linspace(0.0, 1.0, x)
+    elif curve_type == 's_curve':
+        t = np.linspace(0.0, np.pi / 2, x)
+        fade_curve = np.sin(t)
+    elif curve_type == 'hann':
+        fade_curve = np.hanning(x) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
+    elif curve_type == 'hamming':
+        fade_curve = np.hamming(x)
+        
+    return fade_curve

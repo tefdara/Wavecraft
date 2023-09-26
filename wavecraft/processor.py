@@ -4,7 +4,8 @@ import numpy as np
 import os
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
-from wavecraft.utils import bcolors
+import wavecraft.utils as utils
+
 
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
@@ -48,34 +49,37 @@ class Processor:
         sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)    
 
     @mode_handler
-    def fade_io(self, audio, sr, fade_duration=20, curve_type='exp'):
+    def fade_io(self, audio, sr, fade_in=0, fade_out=0, curve_type='exp'):
+        if fade_in == 0 and fade_out == 0:
+            return audio
+        
+        if fade_in == 0:
+            fade_in = 1
+        if fade_out == 0:
+            fade_out = 1
+        
+        max_len_percent = len(audio)*0.08 # 8% 
         # convert fade duration to samples
-        fade_duration_samples = int(fade_duration * sr / 1000)
-        
-        fade_duration_samples = min(fade_duration_samples, audio.shape[-1])
-        
-        if curve_type == 'exp':
-            fade_curve = np.linspace(0.0, 1.0, fade_duration_samples) ** 2
-        elif curve_type == 'log':
-            fade_curve = np.sqrt(np.linspace(0.0, 1.0, fade_duration_samples))
-        elif curve_type == 'linear':
-            fade_curve = np.linspace(0.0, 1.0, fade_duration_samples)
-        elif curve_type == 's_curve':
-            t = np.linspace(0.0, np.pi / 2, fade_duration_samples)
-            fade_curve = np.sin(t)
-        elif curve_type == 'hann':
-            fade_curve = np.hanning(fade_duration_samples) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
-        
+        fade_in_samples = int(fade_in * sr / 1000)
+        fade_in_samples = int(min(fade_in_samples, max_len_percent))+1    
+        fade_in_curve = utils.compute_curve(fade_in_samples, curve_type)
+    
+        fade_out_samples = int(fade_out * sr / 1000)
+        fade_out_samples = int(min(fade_out_samples, max_len_percent))+1
+        fade_out_curve = utils.compute_curve(fade_out_samples, curve_type)
+       
         if len(audio.shape) == 1:
-            audio[:fade_duration_samples] *= fade_curve
-            audio[-fade_duration_samples:] *= fade_curve[::-1]
+            audio[:fade_in_samples] *= fade_in_curve
+            audio[-fade_out_samples:] *= fade_out_curve[::-1]
         else:
-            for ch in range(audio.shape[1]): # For each channel
-                audio[:fade_duration_samples, ch] *= fade_curve
-                audio[-fade_duration_samples:, ch] *= fade_curve[::-1] # reverse the curve for fade-out
+            for ch in range(audio.shape[1]):
+                print(fade_in, fade_out, fade_out_samples, fade_in_samples, self.args.num_samples)
+                audio[:fade_in_samples, ch] *= fade_in_curve
+                audio[-fade_out_samples:, ch] *= fade_out_curve[::-1] # reverse the curve for fade-out
             
         return audio
 
+    
     @mode_handler
     def filter(self, data, sr, cutoff, btype='high', order=5):
         if(cutoff == 0):
@@ -152,7 +156,7 @@ class Processor:
             return yt_stereo, (start_idx, end_idx)
 
         else:
-            print(f'{bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{bcolors.ENDC}')
+            print(f'{utils.bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.bcolors.ENDC}')
 
     @mode_handler
     def trim_after_last_silence(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):

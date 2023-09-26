@@ -133,8 +133,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='Wave Craft', description="Split audio files based on segments from a text file.", 
                                      usage=usage +'\n'+help, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "wmeta", "rmeta", "info"], 
-                    help="Operation to perform. Choices: segment:segmentaion, extract:feature extraction, proxim: proximity learning, onset:onset detection, beat:beat detection, decomp:decomposition, filter:filter, norm:normalise, wmeta:write metadata, rmeta:read metadata, info:file info",
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "wmeta", "rmeta", "info"], 
+                    help="Operation to perform. Choices: segment:segmentaion, extract:feature extraction, proxim: proximity learning, onset:onset detection, beat:beat detection, decomp:decomposition, filter:filter, norm:normalisation, fade:fade, wmeta:write metadata, rmeta:read metadata, info:file info",
                     metavar='operation',
                     nargs='?') 
     
@@ -150,12 +150,16 @@ if __name__ == "__main__":
     output_group.add_argument("-st", "--save-txt", action='store_true', help="Save segment times to a text file.")
     
     # Audio settings
-    audio_settings_group = parser.add_argument_group('Audio settings')
+    audio_settings_group = parser.add_argument_group('Audio settings', description='These settings apply to all operations where relevant')
     audio_settings_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 44100.", required=False)
-    audio_settings_group.add_argument("--fmin", type=float, default=30, help="Minimum frequency. Default is 30.", required=False)
-    audio_settings_group.add_argument("--fmax", type=float, default=16000, help="Maximum frequency. Default is 16000", required=False)
+    audio_settings_group.add_argument("--fmin", type=float, default=30, help="Minimum analysis frequency. Default is 30.", required=False)
+    audio_settings_group.add_argument("--fmax", type=float, default=16000, help="Maximum analysis frequency. Default is 16000", required=False)
     audio_settings_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
     audio_settings_group.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
+    audio_settings_group.add_argument("-fi", "--fade-in", type=int, default=50, help="Duration in ms for fade in. Default is 50ms.", required=False)
+    audio_settings_group.add_argument("-fo", "--fade-out", type=int, default=100, help="Duration in ms for fade in. Default is 100ms.", required=False)
+    audio_settings_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
+                        help="Type of curve to use for fade in and out. Default is exponential.", required=False)
 
     # Create a group for segmentation arguments
     segmentation_group = parser.add_argument_group(title='Segmentation -> segment', description='splits the audio file into segments based on the provided arguments')
@@ -163,14 +167,12 @@ if __name__ == "__main__":
                         help="Segmentation method to use.")
     segmentation_group.add_argument("-ml", "--min-length", type=float, default=0.1, help="Minimum length of a segment in seconds. Default is 0.1s.\
                         anything shorter won't be used", required=False)
-    segmentation_group.add_argument("-f", "--fade-duration", type=int, default=20, help="Duration in ms for fade in and out. Default is 50ms.", required=False)
-    segmentation_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
-                        help="Type of curve to use for fade in and out. Default is exponential.", required=False)
     segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.08, help="Onset detection threshold. Default is 0.08.", required=False)
     segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False)
     segmentation_group.add_argument("-oe", "--onset-envelope", type=str, choices=['mel', 'mfcc', 'cqt_chr', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz'], default="mel",\
                         help="Onset envelope to use for onset detection. Default is mel (mel spectrogram).\n Choices are: mel (mel spectrogram), mfcc (Mel-frequency cepstral coefficients), cqt_chr (chroma constant-Q transform), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features)", required=False)
-    
+    segmentation_group.add_argument("-bl", "--backtrack-length", type=float, default=20, help="Backtrack length in miliseconds. Backtracks the segments from the detected onsets. Default is 20ms.", required=False)
+                                    
     # Feature extraction arguments
     feature_extraction_group = parser.add_argument_group(title='Feature extraction -> extract', description='extracts features from the audio file')
     feature_extraction_group.add_argument("-fex", "--feature-extractor", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chr', 'mfcc', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz', 'pf'], default=None,\
