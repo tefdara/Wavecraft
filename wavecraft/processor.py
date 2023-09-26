@@ -23,7 +23,6 @@ class Processor:
         self.mode = mode
     
     def _render(self, y):
-        print(self.args.output)
         sf.write(self.args.output, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
     
     def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
@@ -74,7 +73,6 @@ class Processor:
             audio[-fade_out_samples:] *= fade_out_curve[::-1]
         else:
             for ch in range(audio.shape[1]):
-                print(fade_in, fade_out, fade_out_samples, fade_in_samples, self.args.num_samples)
                 audio[:fade_in_samples, ch] *= fade_in_curve
                 audio[-fade_out_samples:, ch] *= fade_out_curve[::-1] # reverse the curve for fade-out
             
