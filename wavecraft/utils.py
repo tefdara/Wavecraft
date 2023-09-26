@@ -13,7 +13,10 @@ class bcolors:
     BLUE = '\033[94m'
     MAGENTA = '\033[95m'
     GREY = '\033[37m'
+    FAIL = '\033[91m'
     ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 def extract_metadata(input_file, args):

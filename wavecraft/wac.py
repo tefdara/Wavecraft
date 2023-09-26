@@ -9,7 +9,7 @@ from wavecraft import *
 
 def main(args):
     dsp = args.operation not in ["wmeta", "rmeta", "info"]
-    process = args.operation in ["filter", "norm"]
+    process = args.operation in ["filter", "norm", "fade"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
@@ -35,7 +35,7 @@ def main(args):
             try:
                 if process:
                     args.y, args.sample_rate = sf.read(file, dtype='float32')
-                    args.output = input
+                    args.output = args.input
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
             except RuntimeError:
@@ -74,7 +74,10 @@ def main(args):
             processor.filter(args.y, args.sample_rate, args.filter_frequency, args.filter_type)
         elif args.operation == "norm":
             utils.info_logger.info('Normalising', extra=extra)
-            processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode)                    
+            processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode) 
+        elif args.operation == "fade":
+            utils.info_logger.info('Applying fade to', extra=extra)
+            processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)                   
             
         else:
             if args.operation == "wmeta":
@@ -128,100 +131,106 @@ def load_files(input):
 
 if __name__ == "__main__":
     
+    formatter_class=lambda prog: argparse.HelpFormatter(prog,
+    max_help_position=50, width=130, indent_increment=3)
     usage = "usage: wave_craft.py operation [options] arg"
     help = "wave_craft.py -h, --help for more details"
     parser = argparse.ArgumentParser(prog='Wave Craft', description="Split audio files based on segments from a text file.", 
-                                     usage=usage +'\n'+help, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "wmeta", "rmeta", "info"], 
-                    help="Operation to perform. Choices: segment:segmentaion, extract:feature extraction, proxim: proximity learning, onset:onset detection, beat:beat detection, decomp:decomposition, filter:filter, norm:normalisation, fade:fade, wmeta:write metadata, rmeta:read metadata, info:file info",
-                    metavar='operation',
-                    nargs='?') 
+                                     usage=usage +'\n'+help, formatter_class=formatter_class)
     
-    # Create a group for input arguments
-    input_group = parser.add_argument_group('Input')
-    input_group.add_argument("-i", "--input", type=str, help="Path to the audio, metadata or dataset file. It can be a directory for batch processing. It is valid for all operations", required=True)
-    input_group.add_argument("-it", "--input-text", type=str, required=False,
-                        help="The text file containing the segmentation data. Defaults to the nameofaudio.txt")
-
-    # Create a group for output arguments
-    output_group = parser.add_argument_group('Output')
-    output_group.add_argument("-o", "--output-directory", type=str, default=None, help="Path to the output directory. Optional.", required=False)
-    output_group.add_argument("-st", "--save-txt", action='store_true', help="Save segment times to a text file.")
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "wmeta", "rmeta", "info"], 
+                    help="Operation to perform:\
+                    segment:segmentaion, extract:feature extraction, proxim: proximity learning, onset:onset detection, beat:beat detection, decomp:decomposition, filter:filter, norm:normalisation, fade:fade, wmeta:write metadata, rmeta:read metadata, info:file info",
+                    metavar='operation',
+                    nargs='?')
+    parser.add_argument("input", type=str, help="Path to the audio, metadata or dataset file. It can be a directory for batch processing. It is valid for all operations")
+    
+    parser._action_groups[1].title = "Help"
+    
+    # IO
+    io_group = parser.add_argument_group('I/O')
+    io_group.add_argument("-it", "--input-text", type=str, required=False,
+                        help="The text file containing the segmentation data. Defaults to the nameofaudio.txt", metavar='')
+    io_group.add_argument("-o", "--output-directory", type=str, default=None, help="Path to the output directory. Optional.", required=False, metavar='')
+    io_group.add_argument("-st", "--save-txt", action='store_true', help="Save segment times to a text file.")
     
     # Audio settings
-    audio_settings_group = parser.add_argument_group('Audio settings', description='These settings apply to all operations where relevant')
-    audio_settings_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 44100.", required=False)
-    audio_settings_group.add_argument("--fmin", type=float, default=30, help="Minimum analysis frequency. Default is 30.", required=False)
-    audio_settings_group.add_argument("--fmax", type=float, default=16000, help="Maximum analysis frequency. Default is 16000", required=False)
-    audio_settings_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
-    audio_settings_group.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
-    audio_settings_group.add_argument("-fi", "--fade-in", type=int, default=50, help="Duration in ms for fade in. Default is 50ms.", required=False)
-    audio_settings_group.add_argument("-fo", "--fade-out", type=int, default=100, help="Duration in ms for fade in. Default is 100ms.", required=False)
+    audio_settings_group = parser.add_argument_group('Audio settings - these settings apply to all operations where relevant', description='')
+    audio_settings_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 44100.", required=False, metavar='')
+    audio_settings_group.add_argument("--fmin", type=float, default=30, help="Minimum analysis frequency. Default is 30.", required=False, metavar='')
+    audio_settings_group.add_argument("--fmax", type=float, default=16000, help="Maximum analysis frequency. Default is 16000", required=False, metavar='')
+    audio_settings_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False, metavar='')
+    audio_settings_group.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False, metavar='')
+    fo_def=50
+    fi_def=30
+    audio_settings_group.add_argument("-fi", "--fade-in", type=int, default=30, help=f"Duration in ms for fade in. Default is {fo_def}ms.", required=False, metavar='')
+    audio_settings_group.add_argument("-fo", "--fade-out", type=int, default=50, help=f"Duration in ms for fade in. Default is {fi_def}ms.", required=False, metavar='')
     audio_settings_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
-                        help="Type of curve to use for fade in and out. Default is exponential.", required=False)
+                        help="Type of curve to use for fades. Default is exponential.", required=False, metavar='')
 
-    # Create a group for segmentation arguments
-    segmentation_group = parser.add_argument_group(title='Segmentation -> segment', description='splits the audio file into segments based on the provided arguments')
+    # Segmentation
+    segmentation_group = parser.add_argument_group(title='Segmentation : splits the audio file into segments', description='operation -> segment')
     segmentation_group.add_argument("-m", "--segmentation-method", type=str, choices=["onset", "beat", "text"], required=False, default="onset",
-                        help="Segmentation method to use.")
+                        help="Segmentation method to use.", metavar='')
     segmentation_group.add_argument("-ml", "--min-length", type=float, default=0.1, help="Minimum length of a segment in seconds. Default is 0.1s.\
-                        anything shorter won't be used", required=False)
-    segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.08, help="Onset detection threshold. Default is 0.08.", required=False)
-    segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False)
+                        anything shorter won't be used", required=False, metavar='')
+    segmentation_group.add_argument("-t", "--onset-threshold", type=float, default=0.08, help="Onset detection threshold. Default is 0.08.", required=False, metavar='')
+    segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False, metavar='')
     segmentation_group.add_argument("-oe", "--onset-envelope", type=str, choices=['mel', 'mfcc', 'cqt_chr', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz'], default="mel",\
-                        help="Onset envelope to use for onset detection. Default is mel (mel spectrogram).\n Choices are: mel (mel spectrogram), mfcc (Mel-frequency cepstral coefficients), cqt_chr (chroma constant-Q transform), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features)", required=False)
-    segmentation_group.add_argument("-bl", "--backtrack-length", type=float, default=20, help="Backtrack length in miliseconds. Backtracks the segments from the detected onsets. Default is 20ms.", required=False)
+                        help="Onset envelope to use for onset detection. Default is mel (mel spectrogram).\n Choices are: mel (mel spectrogram), mfcc (Mel-frequency cepstral coefficients), cqt_chr (chroma constant-Q transform), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features)", required=False, metavar='')
+    segmentation_group.add_argument("-bl", "--backtrack-length", type=float, default=20, help="Backtrack length in miliseconds. Backtracks the segments from the detected onsets. Default is 20ms.", required=False, metavar='')
                                     
-    # Feature extraction arguments
-    feature_extraction_group = parser.add_argument_group(title='Feature extraction -> extract', description='extracts features from the audio file')
+    # Feature extraction
+    feature_extraction_group = parser.add_argument_group(title='Feature extraction', description='operation -> extract')
     feature_extraction_group.add_argument("-fex", "--feature-extractor", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chr', 'mfcc', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz', 'pf'], default=None,\
-                                        help="Feature extractor to use. Default is all. Choices are: mel (mel spectrogram), cqt (constant-Q transform), stft (short-time Fourier transform), cqt_chr (chroma constant-Q transform), mfcc (Mel-frequency cepstral coefficients), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features), pf (poly features).", required=False)
+                                        help="Feature extractor to use. Default is all. Choices are: mel (mel spectrogram), cqt (constant-Q transform), stft (short-time Fourier transform), cqt_chr (chroma constant-Q transform), mfcc (Mel-frequency cepstral coefficients), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features), pf (poly features).", required=False, metavar='')
     feature_extraction_group.add_argument("-fdic", "--flatten-dictionary", action='store_true', default=False, help="Flatten the dictionary of features. Default is False.", required=False)
     
-    # Proximity metric calculation arguments
-    proxi_metor_group = parser.add_argument_group(title='Proximity metric calculation -> proxim', description= 'finds the most similar sounds based on the features dataset')
+    # Proximity metric calculation 
+    proxi_metor_group = parser.add_argument_group(title='Distance metric learning - finds the most similar sounds based on a features dataset', description= 'operation -> proxim')
     proxi_metor_group.add_argument('-ns', '--n-similar', type=int, default=5,
-                        help='Number of similar sounds to retrieve')
+                        help='Number of similar sounds to retrieve', metavar='')
     proxi_metor_group.add_argument('-id', '--identifier', type=str, required=False,
-                        help='Identifier to test, i.e., the name of sound file. If not provided, all sounds in the dataset will be tested against each other')
+                        help='Identifier to test, i.e., the name of sound file. If not provided, all sounds in the dataset will be tested against each other', metavar='')
     proxi_metor_group.add_argument('-cls', '--class_to_analyse', type=str, default='stats',
-                        help='Class to analyse. Default: stats. If not provided, all classes will be analysed. Note that this option can produce unexpected results if the dataset contains multiple classes with different dimensions')
+                        help='Class to analyse. Default: stats. If not provided, all classes will be analysed. Note that this option can produce unexpected results if the dataset contains multiple classes with different dimensions', metavar='')
     proxi_metor_group.add_argument('-mt', '--metric-to-analyze', type=str, default=None,
-                        help='Metric to analyze')
+                        help='Metric to analyze', metavar='')
     proxi_metor_group.add_argument('-ops', action='store_true', default=False,
                         help='Use opetions file to fine tune the metric learning')
     proxi_metor_group.add_argument('-mn', '--n-max', type=int, default=-1, 
-                        help='Max number of similar files to retrieve, Default: -1 (all)')
+                        help='Max number of similar files to retrieve, Default: -1 (all)', metavar='')
     
-    # Decomposition arguments
-    decomposition_group = parser.add_argument_group(title='Decomposition -> decomp', description='decomposes the audio file into harmonic, percussive or n components')
-    decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False)
-    decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components, before computing segments.", required=False)
+    # Decomposition 
+    decomposition_group = parser.add_argument_group(title='Decomposition - decomposes the audio file into harmonic, percussive or n components', description='operation -> decomp')
+    decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
+    decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components, before computing segments.", required=False, metavar='')
     
-    # Beat detection arguments
-    beat_group = parser.add_argument_group(title='Beat detection -> beat', description='detects beats in the audio file')
-    beat_group.add_argument("-k", type=int, default=5, help="Number of beat clusters to detect. Default is 5.", required=False)
+    # Beat detection 
+    beat_group = parser.add_argument_group(title='Beat detection - detects beats in the audio file', description='operation -> beat')
+    beat_group.add_argument("-k", type=int, default=5, help="Number of beat clusters to detect. Default is 5.", required=False, metavar='')
     
-    # Filter arguments
-    filter_group = parser.add_argument_group(title='Filter -> filter', description='applies a high / low pass filter to the audio file')
+    # Filter 
+    filter_group = parser.add_argument_group(title='Filter - applies a high / low pass filter to the audio file', description='operation -> filter')
     filter_group.add_argument("-ff", "--filter-frequency", type=int, default=40, 
-                        help="Frequency to use for the high-pass filter. Default is 40 Hz. Set to 0 to disable", required=False)
+                        help="Frequency to use for the high-pass filter. Default is 40 Hz. Set to 0 to disable", required=False, metavar='')
     filter_group.add_argument("-ft", "--filter-type", type=str, choices=['high', 'low'], default="high", 
-                        help="Type of filter to use. Default is high-pass.", required=False)
+                        help="Type of filter to use. Default is high-pass.", required=False, metavar='')
 
-    # Normalization arguments
-    normalization_group = parser.add_argument_group(title='Normalization -> norm', description='normalizes the audio file')
+    # Normalization 
+    normalization_group = parser.add_argument_group(title='Normalization - normalizes the audio file', description='operation -> norm')
     normalization_group.add_argument("-nl", "--normalisation-level", type=float, default=-3, required=False,
-                        help="Normalisation level, default is -3 db.")
+                        help="Normalisation level, default is -3 db.", metavar='')
     normalization_group.add_argument("-nm", "--normalisation-mode", type=str, default="peak", choices=["peak", "rms", "loudness"], 
-                        help="Normalisation mode; default is RMS.", required=False)
+                        help="Normalisation mode; default is RMS.", required=False, metavar='')
     
-    # Metadata arguments
-    metadata_group = parser.add_argument_group(title='Metadata -> wmeta | rmeta', description='write metadata to the audio file | read metadata from the audio file')
-    metadata_group.add_argument("--meta", type=str, help="List of metadata or comments to write to the file. Default is None.", required=False, nargs='+')
-    metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False)
+    # Metadata 
+    metadata_group = parser.add_argument_group(title='Metadata - writes or reads metadata to/from the audio file', description='operations -> wmeta, rmeta')
+    metadata_group.add_argument("--meta", type=str, help="List of metadata or comments to write to the file. Default is None.", required=False, nargs='+', metavar='')
+    metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False, metavar='')
 
+    fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file', description='operation -> fade')
+    info = parser.add_argument_group(title='Info - displays information about the audio file', description='operation -> info')
     args = parser.parse_args()
     main(args)
     

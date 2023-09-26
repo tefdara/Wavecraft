@@ -23,7 +23,8 @@ class Processor:
         self.mode = mode
     
     def _render(self, y):
-        sf.write(self.args.output, y, self.args.sample_rate)
+        print(self.args.output)
+        sf.write(self.args.output, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
     
     def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
         
