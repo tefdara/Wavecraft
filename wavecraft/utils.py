@@ -4,7 +4,7 @@ import subprocess, tempfile, json
 import logging
 
 # Define color codes for print messages
-class bcolors:
+class colors:
     WHITE = '\033[97m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
@@ -28,7 +28,7 @@ def extract_metadata(input_file, args):
     ]
     output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     if 'not found' in output:
-        print(f'{bcolors.RED}ffmpeg is not installed. Please install it if you want to copy the metadata over.{bcolors.ENDC}')
+        print(f'{colors.RED}ffmpeg is not installed. Please install it if you want to copy the metadata over.{colors.ENDC}')
         return None
     
     source_m, seg_m = generate_metadata(input_file, args)
@@ -50,7 +50,7 @@ def extract_metadata(input_file, args):
                 else:
                     # if the values are different then replace the old value with the new one
                     output = output.replace(line, '')
-                    print(f'{bcolors.YELLOW}Overwriting metadata {line}...{bcolors.ENDC}')
+                    print(f'{colors.YELLOW}Overwriting metadata {line}...{colors.ENDC}')
                     output+=str(line)
             else:
                 if line != meta_data.splitlines()[-1]:
@@ -125,9 +125,9 @@ def export_metadata(data, output_path, data_type='metadata'):
         data_dict[item[0].strip()] = item[1].strip()
     output_file = output_path+f'_{data_type}.json'
     if os.path.exists(output_file):
-        print(f'{bcolors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
+        print(f'{colors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{colors.ENDC}')
     else:
-        print(f'{bcolors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{bcolors.ENDC}')
+        print(f'{colors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{colors.ENDC}')
     with open(output_file, 'w') as file:
         json.dump(data_dict, file, indent=4)
         
@@ -138,7 +138,7 @@ def load_json (input):
                 data = json.load(file)
                 return data
         except Exception as e:
-            print(f'{bcolors.RED}Error loading JSON file {input}. {str(e)}{bcolors.ENDC}')
+            print(f'{colors.RED}Error loading JSON file {input}. {str(e)}{colors.ENDC}')
             return None
     elif os.path.isdir(input):
         data = {}
@@ -148,7 +148,7 @@ def load_json (input):
                     with open (os.path.join(input, file), 'r') as f:
                         data[file] = json.load(f)
                 except Exception as e:
-                    print(f'{bcolors.RED}Error loading JSON file {file}. {str(e)}{bcolors.ENDC}')
+                    print(f'{colors.RED}Error loading JSON file {file}. {str(e)}{colors.ENDC}')
                     return None
         return data
     
@@ -169,7 +169,7 @@ def sci_note_to_float(array, precision=2):
             return 0
         return '{:.2f}'.format(array)
     else:
-        print(f'{bcolors.RED}Invalid input. Expected a numpy array or a float, got {type(array)}{bcolors.ENDC}')
+        print(f'{colors.RED}Invalid input. Expected a numpy array or a float, got {type(array)}{colors.ENDC}')
         return None
         
 def check_format(file):

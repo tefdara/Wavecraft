@@ -28,32 +28,32 @@ class Decomposer:
         if self.method == 'decompose':
             comps, acts = await self._decompose(y, n_components=self.n_components, render_path=self.render_path)
             if not self.render:
-                print(f'{utils.bcolors.GREEN}Decomposed the signal into {self.n_components} components.{utils.bcolors.ENDC}')
-                print(f'{utils.bcolors.YELLOW}Render not requested. Exiting...{utils.bcolors.ENDC}')
+                print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
+                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
                 return
 
-            print(f'{utils.bcolors.GREEN}Decomposed the signal into {self.n_components} components.{utils.bcolors.ENDC}')
-            print(f'{utils.bcolors.YELLOW}Rendering components to {self.render_path}...{utils.bcolors.ENDC}')
+            print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
+            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
             utils.render_components(comps, acts, sr, self.render_path)
 
         elif self.method == 'hpss':
             y_harmonic, y_percussive = await self._decompose_hpss(y)
             if not self.render:
-                print(f'{utils.bcolors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.bcolors.ENDC}')
-                print(f'{utils.bcolors.YELLOW}Render not requested. Exiting...{utils.bcolors.ENDC}')
+                print(f'{utils.colors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.colors.ENDC}')
+                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
                 return
-            print(f'{utils.bcolors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.bcolors.ENDC}')
-            print(f'{utils.bcolors.YELLOW}Rendering components to {self.render_path}...{utils.bcolors.ENDC}')
+            print(f'{utils.colors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.colors.ENDC}')
+            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
             utils.render_hpss(y_harmonic, y_percussive, self.render_path)
 
         elif self.method == 'sklearn':
             scomps, sacts = await self._decompose_sk(y, n_components=self.n_components)
             if not self.render:
-                print(f'{utils.bcolors.GREEN}Decomposed the signal into {self.n_components} components.{utils.bcolors.ENDC}')
-                print(f'{utils.bcolors.YELLOW}Render not requested. Exiting...{utils.bcolors.ENDC}')
+                print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
+                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
                 return
-            print(f'{utils.bcolors.GREEN}Decomposed the signal into {self.n_components} components.{utils.bcolors.ENDC}')
-            print(f'{utils.bcolors.YELLOW}Rendering components to {self.render_path}...{utils.bcolors.ENDC}')
+            print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
+            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
             utils.render_components(scomps, sacts, sr, self.render_path)
 
     async def _decompose(self, y, n_components=4, spectogram=None, n_fft=1024, hop_length=512, render_path=None):

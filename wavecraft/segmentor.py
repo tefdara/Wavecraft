@@ -15,7 +15,7 @@ class Segmentor:
         
             
     def render_segments(self, segments):
-        print(f'\n{utils.bcolors.GREEN}Rendering segments...{utils.bcolors.ENDC}\n')
+        print(f'\n{utils.colors.GREEN}Rendering segments...{utils.colors.ENDC}\n')
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
@@ -38,7 +38,7 @@ class Segmentor:
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:
-                print(f'{utils.bcolors.YELLOW}Skipping segment {i+1} because it\'s too short{utils.bcolors.ENDC} : {segment_length}s')
+                print(f'{utils.colors.YELLOW}Skipping segment {i+1} because it\'s too short{utils.colors.ENDC} : {segment_length}s')
                 continue 
             count += 1
             segment = self.processor.fade_io(audio=segment, sr=self.args.sample_rate, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
@@ -47,17 +47,17 @@ class Segmentor:
             segment_path = self.base_segment_path+f'_{count}.wav'
             
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
-            print(f'{utils.bcolors.CYAN}Saving segment {count} to {segment_path}.{utils.bcolors.ENDC} {utils.bcolors.BLUE}length: {segment_length}s{utils.bcolors.ENDC}\n')
+            print(f'{utils.colors.CYAN}Saving segment {count} to {segment_path}.{utils.colors.ENDC} {utils.colors.BLUE}length: {segment_length}s{utils.colors.ENDC}\n')
             utils.write_metadata(segment_path, prev_metadata)
 
         utils.export_metadata(prev_metadata, self.base_segment_path, data_type='seg_metadata')
                 
         
-        print(f'\n[{utils.bcolors.GREEN}Done{utils.bcolors.ENDC}]\n')
+        print(f'\n[{utils.colors.GREEN}Done{utils.colors.ENDC}]\n')
 
 
     def save_segments_as_txt(self, onsets):
-        print(f'\n{utils.bcolors.GREEN}Saving segments as text file...{utils.bcolors.ENDC}')
+        print(f'\n{utils.colors.GREEN}Saving segments as text file...{utils.colors.ENDC}')
         text_file_path = self.base_segment_path + '_segments.txt'
         with open (text_file_path, 'w') as file:
             for i in range(len(onsets) - 1):
@@ -72,7 +72,7 @@ class Segmentor:
                 # add a tab character between the start and end times
                 file.write(f'{start_time}\t{end_time}\n')
         
-        print(f'\n[{utils.bcolors.GREEN}Done{utils.bcolors.ENDC}]\n')
+        print(f'\n[{utils.colors.GREEN}Done{utils.colors.ENDC}]\n')
         
     def segment_using_txt(self, audio_path, txt_path, output_folder, file_format):
         
@@ -105,7 +105,7 @@ class Segmentor:
             detector = BeatDetector(self.args)
             segments = detector.main()
         
-        user_input = input(f'{utils.bcolors.GREEN}Choose an action:{utils.bcolors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
+        user_input = input(f'{utils.colors.GREEN}Choose an action:{utils.colors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
         if user_input.lower() == '3':
             sys.exit()
 

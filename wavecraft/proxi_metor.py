@@ -62,19 +62,19 @@ class ProxiMetor:
         # Standardize either specific metric or all metrics under a class
         if metric:
             if metric.endswith('_'):  # Wildcard matching
-                print(f'{utils.bcolors.MAGENTA}Using wildcard matching for {metric} {utils.bcolors.ENDC}')
+                print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} {utils.colors.ENDC}')
                 prefix = clss + "_" + metric[:-1] # Remove the wildcard
                 columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
                 df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
             else:
-                print(f'{utils.bcolors.MAGENTA}Using exact matching for {metric} {utils.bcolors.ENDC}')
+                print(f'{utils.colors.MAGENTA}Using exact matching for {metric} {utils.colors.ENDC}')
                 metric = clss + "_" + metric
                 if metric not in df.columns:
                     raise ValueError(f"The metric {metric} doesn't exist in the data.")
                 df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
                 columns_to_compare = [metric + "_standardized"]
         else:
-            print(f'{utils.bcolors.MAGENTA}Using all metrics for {clss} {utils.bcolors.ENDC}')
+            print(f'{utils.colors.MAGENTA}Using all metrics for {clss} {utils.colors.ENDC}')
             descriptors_columns = [col for col in df.columns if clss in col]
             standardized_features = scaler.fit_transform(df[descriptors_columns])
             df[descriptors_columns] = standardized_features
@@ -217,17 +217,17 @@ class ProxiMetor:
                 if os.path.exists(source_file_path):
                     # check if the file already exists in the target directory
                     if not os.path.exists(os.path.join(target_folder, sound)):
-                        print(f'{utils.bcolors.CYAN} Copying {sound} {utils.bcolors.ENDC}')
+                        print(f'{utils.colors.CYAN} Copying {sound} {utils.colors.ENDC}')
                         shutil.copy2(source_file_path, target_folder)
                     if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
                         shutil.copy2(analysis_file_path, analysis_folder)
                 else:
-                    print(f'{utils.bcolors.RED} File {sound} does not exist {utils.bcolors.ENDC}')
+                    print(f'{utils.colors.RED} File {sound} does not exist {utils.colors.ENDC}')
 
                 await asyncio.sleep(0.005)  # just to mimic some delay
-            print(f'{utils.bcolors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.bcolors.ENDC}\n')
+            print(f'{utils.colors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.colors.ENDC}\n')
         except Exception as e:
-            print(f'{utils.bcolors.RED} Error occurred while copying files: {e} {utils.bcolors.ENDC}')
+            print(f'{utils.colors.RED} Error occurred while copying files: {e} {utils.colors.ENDC}')
 
     async def process_batch(self, all_files, used_files, df, metric=None, n=5, clss="stats", id=None, ops=None):
         """Process a batch of sounds asynchronously."""
@@ -242,7 +242,7 @@ class ProxiMetor:
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        print(f'{utils.bcolors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} {utils.bcolors.ENDC}')
+        print(f'{utils.colors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} {utils.colors.ENDC}')
         await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)

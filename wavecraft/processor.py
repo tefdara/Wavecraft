@@ -155,7 +155,7 @@ class Processor:
             return yt_stereo, (start_idx, end_idx)
 
         else:
-            print(f'{utils.bcolors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.bcolors.ENDC}')
+            print(f'{utils.colors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.colors.ENDC}')
     @mode_handler
     def trim_range(self, y, sr, start, end):
         start_idx = int(start * sr)

@@ -102,13 +102,13 @@ def main(args):
 def load_files(input):
     files = []
     if input == None or input == '':
-        print(f'{utils.bcolors.RED}No input provided!{utils.bcolors.ENDC}')
+        print(f'{utils.colors.RED}No input provided!{utils.colors.ENDC}')
         sys.exit()
     if input == '.':
         input = os.getcwd()
     # check if dir is home dir
     if input == os.path.expanduser('~'):
-        print(f'\n{utils.bcolors.RED}You have selcted the home directory! Are you sure you want to go ahead?{utils.bcolors.ENDC}')
+        print(f'\n{utils.colors.RED}You have selcted the home directory! Are you sure you want to go ahead?{utils.colors.ENDC}')
         user_input = input(f'\n1) Yes\n2) No\n')
         if user_input.lower() == '2':
             sys.exit(1)           
@@ -122,7 +122,7 @@ def load_files(input):
         if utils.check_format(input):
             files.append(input)
     if len(files) == 0:
-        print(f'{utils.bcolors.RED}Could not find any valid files!{utils.bcolors.ENDC}')
+        print(f'{utils.colors.RED}Could not find any valid files!{utils.colors.ENDC}')
         sys.exit()
     return files
 

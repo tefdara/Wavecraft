@@ -77,7 +77,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'zcr':
-            print(utils.bcolors.YELLOW + 'Using zero-crossing rate for onset detection.' + utils.bcolors.ENDC)
+            print(utils.colors.YELLOW + 'Using zero-crossing rate for onset detection.' + utils.colors.ENDC)
             zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=zcr,
                                                   sr=sr,
@@ -93,7 +93,7 @@ class OnsetDetector:
         if self.args.source_separation is not None:
             # wait for the decomposition to finish
             from decomposer import Decomposer
-            print(f'{utils.bcolors.YELLOW}Decomposing the signal into harmonic and percussive components...{utils.bcolors.ENDC}')
+            print(f'{utils.colors.YELLOW}Decomposing the signal into harmonic and percussive components...{utils.colors.ENDC}')
             decomposer = Decomposer(self.input, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input), 'components'))
             H, P = await decomposer._decompose_hpss(self.args.y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             if self.decompose == 'harmonic':
@@ -105,7 +105,7 @@ class OnsetDetector:
         
         onsets = self.compute_onsets(self.args.y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax, env_method=self.args.onset_envelope)
         if len(onsets) == 0 or onsets is None:
-            print(f'{utils.bcolors.RED}No onsets detected! Try to reduce the onset threshold with -t.{utils.bcolors.ENDC}')
+            print(f'{utils.colors.RED}No onsets detected! Try to reduce the onset threshold with -t.{utils.colors.ENDC}')
             sys.exit(1)
             return
         ot = librosa.frames_to_time(onsets, sr=self.args.sample_rate, hop_length=self.args.hop_size)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.verbose:
-        print(f'{utils.bcolors.YELLOW}Verbose mode enabled.{utils.bcolors.ENDC}')
+        print(f'{utils.colors.YELLOW}Verbose mode enabled.{utils.colors.ENDC}')
 
     onset_detector = OnsetDetector(args)
 

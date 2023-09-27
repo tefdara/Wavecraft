@@ -140,7 +140,7 @@ class Extractor:
             results = utils.flatten_dict(results) if self.args.flatten_dictionary else results
             
         except Exception as e:
-            print(utils.bcolors.RED+"Error processing", self.file_name, ":", str(e)+utils.bcolors.ENDC)
+            print(utils.colors.RED+"Error processing", self.file_name, ":", str(e)+utils.colors.ENDC)
             errors[self.file_name] = str(e)
             return errors
         
