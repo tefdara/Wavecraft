@@ -280,7 +280,7 @@ def get_logger(type, name):
     handler.setLevel(logging.INFO)
     
     if type == 'info':
-        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(prepend)s \033[96m%(message)s\033[0m %(append)s...')
+        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(prepend)s \033[96m%(message)s\033[0m %(append)s')
     elif type == 'stat':
         formatter = logging.Formatter('\n[ \033[92mSTAT\033[0m ] \033[92m%(message)s\033[0m')
     elif type == 'value':
@@ -300,7 +300,7 @@ def get_logger(type, name):
     elif type == 'message':
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ]  %(message)s...')
+        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ]  %(message)s')
         
         
     handler.setFormatter(formatter)

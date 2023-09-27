@@ -1,11 +1,12 @@
 import librosa
 import soundfile as sf
 import numpy as np
-import os
+import os, sys
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
 import wavecraft.utils as utils
 import sounddevice as sd
+
 
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
@@ -19,23 +20,27 @@ def mode_handler(func):
                 return
             else:
                 prev_result = np.copy(result)
-                utils.message_logger.info("Playing preview...")
+                utils.message_logger.info("Playing preview")
                 sd.play(prev_result, samplerate=self.args.sample_rate)
                 sd.wait()
                 while True:
-                    confirmation = input(f"\n{utils.colors.GREEN}Do you want to render the results?{utils.colors.ENDC}\n\n1) yes\n2) replay\n3) no\n")
-                    if confirmation.lower() in ['1', 'y']:
-                        utils.message_logger.info("Rendering...")
+                    confirmation = input(f"\n{utils.colors.GREEN}Do you want to render the results?{utils.colors.ENDC}\n\n1) Render\n2) Replay preview\n3) Exit\n")
+                    if confirmation.lower() == '1':
+                        utils.message_logger.info("Rendering")
                         self._render(result)
-                        utils.message_logger.warn("Done!")
+                        utils.message_logger.info("Done!")
                         break
-                    elif confirmation.lower() in ['2', 'r']:
-                        utils.message_logger.info("Replaying...")
+                    elif confirmation.lower() == '2':
+                        utils.message_logger.info("Replaying")
                         sd.play(prev_result, samplerate=self.args.sample_rate)
                         sd.wait()
-                    else:
-                        utils.warning_logger.warn("Aborting render...")
+                    elif confirmation.lower() == '3':
+                        utils.warning_logger.warn("Aborting render")
                         break
+                    else:
+                        utils.error_logger.error("Invalid input!")
+                        utils.warning_logger.warn("Choose one of the options below")
+                        continue
                 return
         else:
             return result
@@ -209,27 +214,19 @@ class Processor:
         else:
             print(f'{utils.colors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.colors.ENDC}')
     @mode_handler
-    def trim_range(self, y, sr, range):
+    def trim_range(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
         # e.g 0.1-0.5 means trim between 0.1 and 0.5 seconds
         # e.g 0.1- means trim after 0.1 seconds
         # e.g -0.5 means trim before 0.5 seconds
         range = range.split('-')
-        start = float(range[0]) if range[0] != '' else 0
-        end = float(range[1]) if len(range) > 1 and range[1] != '' else None
-                
-        start_idx = int(start * sr)
-        end_idx = len(y[0]) if not end else int(end * sr) 
-        
-        if len(y.shape) == 1:  # Mono
-            y_trimmed = y[0:start_idx] if not end else np.concatenate((y[0:start_idx], y[end_idx:]))
-        else:  # Stereo or Multi-channel
-            channels = []
-            for ch in y:
-                ch_trimmed = ch[0:start_idx] if not end else np.concatenate((ch[0:start_idx], ch[end_idx:]))
-                channels.append(ch_trimmed)
-            y_trimmed = np.vstack(channels)
-
-        y_trimmed = self.fade_io_internal(y_trimmed, sr, fade_in=30, fade_out=30)
+        start = int(float(range[0])*sr) if range[0] != '' else 0
+        end = int(float(range[1])*sr) if range[1] != '' else len(y)
+        if end < start or start < 0 or end > len(y):
+            utils.error_logger.error(f'Invalid range! Skipping trim')
+            sys.exit(1)
+            
+        y_trimmed = np.concatenate((y[0:start], y[end:]))
+        y_trimmed = self.fade_io_internal(y_trimmed, sr, fade_in, fade_out, curve_type=curve_type)
         return y_trimmed
     
     @mode_handler

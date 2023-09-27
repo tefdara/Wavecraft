@@ -81,7 +81,7 @@ def main(args):
             processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
         elif args.operation == "trim":
             utils.info_logger.info('Trimming', extra=extra)
-            processor.trim_range(args.y, args.sample_rate, args.trim_range)                 
+            processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)                 
             
         else:
             if args.operation == "wmeta":
