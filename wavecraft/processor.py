@@ -5,17 +5,31 @@ import os
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
 import wavecraft.utils as utils
-
+import sounddevice as sd
 
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
+
+        # If in render mode, preview the sound first
         if self.mode == "render":
-            self._render(result)
+            sd.play(result, samplerate=self.args.sample_rate)
+            sd.wait()
+            # Ask user for confirmation
+            confirmation = input("Do you want to render the results? (y/n): ")
+            if confirmation.lower() == "y":
+                utils.message_logger.info("Rendering...")
+                self._render(result)
+                utils.warning_logger.warn("Done!")
+            else:
+                utils.wa("Aborting render...")
+                return
         else:
             return result
+
     return wrapper
+
 
 class Processor:
     def __init__(self, args, mode='raw'):
@@ -157,7 +171,13 @@ class Processor:
         else:
             print(f'{utils.colors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.colors.ENDC}')
     @mode_handler
-    def trim_range(self, y, sr, start, end):
+    def trim_range(self, y, sr, range):
+        # e.g 0.1-0.5 means trim between 0.1 and 0.5 seconds
+        # e.g 0.1- means trim after 0.1 seconds
+        # e.g -0.5 means trim before 0.5 seconds
+        range = range.split('-')
+        start = float(range[0]) if range[0] != '' else 0
+        end = float(range[1]) if len(range) > 1 and range[1] != '' else len(y) / sr
         start_idx = int(start * sr)
         end_idx = int(end * sr)
         return y[start_idx:end_idx]

@@ -316,7 +316,7 @@ error_logger = get_logger('error', 'wavecraft')
 statlogger = get_logger('stat', 'wavecraft')
 value_logger = get_logger('value', 'wavecraft')
 message_logger = get_logger('message', 'wavecraft')
-
+warning_logger = get_logger('warning', 'wavecraft')
 
 def get_analysis_path():
     output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')

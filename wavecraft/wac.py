@@ -5,8 +5,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import librosa, soundfile as sf
 from wavecraft import *
 
-
-
 def main(args):
     dsp = args.operation not in ["wmeta", "rmeta", "info"]
     process = args.operation in ["filter", "norm", "fade"]
