@@ -7,7 +7,7 @@ from wavecraft import *
 
 def main(args):
     dsp = args.operation not in ["wmeta", "rmeta", "info"]
-    process = args.operation in ["filter", "norm", "fade"]
+    process = args.operation in ["filter", "norm", "fade", "trim"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
@@ -25,7 +25,10 @@ def main(args):
         return
     
     if process:
-        processor = Processor(args, mode='render')
+        batch = True
+        if len(files) == 1:
+            batch = False
+        processor = Processor(args, mode='render', batch=batch)
 
     for file in files:
         args.input = file
@@ -75,7 +78,10 @@ def main(args):
             processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode) 
         elif args.operation == "fade":
             utils.info_logger.info('Applying fade to', extra=extra)
-            processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)                   
+            processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
+        elif args.operation == "trim":
+            utils.info_logger.info('Trimming', extra=extra)
+            processor.trim_range(args.y, args.sample_rate, args.trim_range)                 
             
         else:
             if args.operation == "wmeta":
@@ -221,14 +227,14 @@ if __name__ == "__main__":
     normalization_group.add_argument("-nm", "--normalisation-mode", type=str, default="peak", choices=["peak", "rms", "loudness"], 
                         help="Normalisation mode; default is 'peak'.", required=False, metavar='')
     
-    # Metadata 
+    # Metadata  
     metadata_group = parser.add_argument_group(title='Metadata - writes or reads metadata to/from the audio file', description='operations -> wmeta, rmeta')
     metadata_group.add_argument("--meta", type=str, help="List of metadata or comments to write to the file. Default is None.", required=False, nargs='+', metavar='')
     metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False, metavar='')
 
     # trim
     trim_group = parser.add_argument_group(title='Trim - trims the audio file', description='operation -> trim')
-    trim_group.add_argument("-tt", "--trim-time", type=str, default=None, help="Trim position in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. >0.5).", required=False, metavar='')
+    trim_group.add_argument("-tr", "--trim-range", type=str, default=None, help="Trim position range in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. -0.5).", required=False, metavar='')
     
     fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file', description='operation -> fade')
     

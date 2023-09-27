@@ -122,7 +122,10 @@ def export_metadata(data, output_path, data_type='metadata'):
     data = data.split(',')
     for item in data:
         item = item.split(':')
-        data_dict[item[0].strip()] = item[1].strip()
+        if len(item) >= 2:
+            data_dict[item[0].strip()] = item[1].strip()
+        else:
+            data_dict[item[0].strip()] = ''
     output_file = output_path+f'_{data_type}.json'
     if os.path.exists(output_file):
         print(f'{colors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{colors.ENDC}')
@@ -297,7 +300,7 @@ def get_logger(type, name):
     elif type == 'message':
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(message)s...')
+        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ]  %(message)s...')
         
         
     handler.setFormatter(formatter)
@@ -380,22 +383,6 @@ def print_ascii_art():
     # |                                     |
     # +-------------------------------------+
     ''')
-#   print('''
-#         /\        /\        /\        /\        /\        /\        /\
-#        /  \      /  \      /  \      /  \      /  \      /  \      /  \
-#       /    \    /    \    /    \    /_/\_\    /    \    /    \    /    \
-#      /      \  /      \  /      \   \    /   /      \  /      \  /      \
-#     /        \/        \/        \/  |  |  \/        \/        \/        \
-#                                     /    \
-#                                     `----`                           ''')                                 
-#    print('''
-#         /\      /\      /\        /\        /\        /\        /\\
-#        /  \    /  \    /  \     /_/\\_\     /  \      /  \      /  \\
-#      /      \/      \/      \   \    /   /      \  /      \  /      \\
-#      \      /\      /\      / \  |  |  / \      /  \      /  \      /
-#        \  /    \  /    \  /     \_/\_/     \  /      \  /      \  /
-#         \/      \/      \/      /    \      \/        \/        \/
-#                                 `----`''')
    
    
                                 

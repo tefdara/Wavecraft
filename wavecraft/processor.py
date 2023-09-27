@@ -11,19 +11,31 @@ def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
-
         # If in render mode, preview the sound first
         if self.mode == "render":
-            sd.play(result, samplerate=self.args.sample_rate)
-            sd.wait()
-            # Ask user for confirmation
-            confirmation = input("Do you want to render the results? (y/n): ")
-            if confirmation.lower() == "y":
-                utils.message_logger.info("Rendering...")
+            if self.batch:
+                utils.warning_logger.warn("Batch processing. Skipping preview...")
                 self._render(result)
-                utils.warning_logger.warn("Done!")
+                return
             else:
-                utils.wa("Aborting render...")
+                prev_result = np.copy(result)
+                utils.message_logger.info("Playing preview...")
+                sd.play(prev_result, samplerate=self.args.sample_rate)
+                sd.wait()
+                while True:
+                    confirmation = input(f"\n{utils.colors.GREEN}Do you want to render the results?{utils.colors.ENDC}\n\n1) yes\n2) replay\n3) no\n")
+                    if confirmation.lower() in ['1', 'y']:
+                        utils.message_logger.info("Rendering...")
+                        self._render(result)
+                        utils.message_logger.warn("Done!")
+                        break
+                    elif confirmation.lower() in ['2', 'r']:
+                        utils.message_logger.info("Replaying...")
+                        sd.play(prev_result, samplerate=self.args.sample_rate)
+                        sd.wait()
+                    else:
+                        utils.warning_logger.warn("Aborting render...")
+                        break
                 return
         else:
             return result
@@ -32,9 +44,10 @@ def mode_handler(func):
 
 
 class Processor:
-    def __init__(self, args, mode='raw'):
+    def __init__(self, args, mode='raw', batch=True):
         self.args = args
         self.mode = mode
+        self.batch = batch
     
     def _render(self, y):
         sf.write(self.args.output, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
@@ -60,19 +73,29 @@ class Processor:
             os.makedirs(render_path)
             
         sf.write(os.path.join(render_path, 'harmonic.wav'), y_harmonic, sr)
-        sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)    
+        sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)
 
-    @mode_handler
-    def fade_io(self, audio, sr, fade_in=0, fade_out=0, curve_type='exp'):
+#############################################
+# Fade
+#############################################    
+
+    def fade_io_internal(self, y, sr, fade_in=0, fade_out=0, curve_type='exp'):
         if fade_in == 0 and fade_out == 0:
-            return audio
+            return y
         
         if fade_in == 0:
             fade_in = 1
         if fade_out == 0:
             fade_out = 1
         
-        max_len_percent = len(audio)*0.08 # 8% 
+        dur = len(y) / sr
+        if dur < 1.0:
+            max_len_percent = len(y)*0.08 # 8% 
+        elif dur < 2.0 and dur >= 1.0:
+            max_len_percent = len(y)*0.15 # 15%
+        elif dur >= 2.0:
+            max_len_percent = len(y)*0.5 # 50% 
+            
         # convert fade duration to samples
         fade_in_samples = int(fade_in * sr / 1000)
         fade_in_samples = int(min(fade_in_samples, max_len_percent))+1    
@@ -82,17 +105,24 @@ class Processor:
         fade_out_samples = int(min(fade_out_samples, max_len_percent))+1
         fade_out_curve = utils.compute_curve(fade_out_samples, curve_type)
        
-        if len(audio.shape) == 1:
-            audio[:fade_in_samples] *= fade_in_curve
-            audio[-fade_out_samples:] *= fade_out_curve[::-1]
+        if len(y.shape) == 1:
+            y[:fade_in_samples] *= fade_in_curve
+            y[-fade_out_samples:] *= fade_out_curve[::-1]
         else:
-            for ch in range(audio.shape[1]):
-                audio[:fade_in_samples, ch] *= fade_in_curve
-                audio[-fade_out_samples:, ch] *= fade_out_curve[::-1] # reverse the curve for fade-out
+            for ch in range(y.shape[1]):
+                y[:fade_in_samples, ch] *= fade_in_curve
+                y[-fade_out_samples:, ch] *= fade_out_curve[::-1] # reverse the curve for fade-out
             
-        return audio
+        return y
 
+    @mode_handler
+    def fade_io(self, y, sr, fade_in=0, fade_out=0, curve_type='exp'):
+        return self.fade_io_internal(y, sr, fade_in, fade_out, curve_type=curve_type)
     
+#############################################
+# Filter
+#############################################
+
     @mode_handler
     def filter(self, data, sr, cutoff, btype='high', order=5):
         if(cutoff == 0):
@@ -121,6 +151,10 @@ class Processor:
 
         return y
 
+#############################################
+# Normalisation
+#############################################
+
     @mode_handler
     def normalise_audio(self, y, sr, target_level, mode="peak"):
         """
@@ -146,6 +180,10 @@ class Processor:
             return normalize.loudness(y, loudness, target_level)
         else:
             raise ValueError(f"Unknown normalization type: {mode}")
+
+#############################################
+# Trim
+#############################################
     
     @mode_handler
     def trim_ends(self, y, threshold=20, frame_length=2048, hop_length=512):
@@ -177,10 +215,22 @@ class Processor:
         # e.g -0.5 means trim before 0.5 seconds
         range = range.split('-')
         start = float(range[0]) if range[0] != '' else 0
-        end = float(range[1]) if len(range) > 1 and range[1] != '' else len(y) / sr
+        end = float(range[1]) if len(range) > 1 and range[1] != '' else None
+                
         start_idx = int(start * sr)
-        end_idx = int(end * sr)
-        return y[start_idx:end_idx]
+        end_idx = len(y[0]) if not end else int(end * sr) 
+        
+        if len(y.shape) == 1:  # Mono
+            y_trimmed = y[0:start_idx] if not end else np.concatenate((y[0:start_idx], y[end_idx:]))
+        else:  # Stereo or Multi-channel
+            channels = []
+            for ch in y:
+                ch_trimmed = ch[0:start_idx] if not end else np.concatenate((ch[0:start_idx], ch[end_idx:]))
+                channels.append(ch_trimmed)
+            y_trimmed = np.vstack(channels)
+
+        y_trimmed = self.fade_io_internal(y_trimmed, sr, fade_in=30, fade_out=30)
+        return y_trimmed
     
     @mode_handler
     def trim_after_last_silence(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
@@ -239,7 +289,10 @@ class Processor:
         else:
             y = y[:, start:end]
         return y
-    
+
+#############################################
+# Misc
+#############################################
     @mode_handler
     def resample(self, y, sr, target_sr):
         return librosa.resample(y, sr, target_sr)

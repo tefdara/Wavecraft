@@ -31,7 +31,7 @@ class Segmentor:
                 start_sample = segment_samps[i]
                 end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
-            segment = self.processor.fade_io(audio=segment, sr=self.args.sample_rate, fade_out=60, curve_type=self.args.curve_type)
+            segment = self.processor.fade_io(segment, self.args.sample_rate, fade_out=60, curve_type=self.args.curve_type)
             segment = self.processor.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
@@ -39,7 +39,7 @@ class Segmentor:
                 print(f'{utils.colors.YELLOW}Skipping segment {i+1} because it\'s too short{utils.colors.ENDC} : {segment_length}s')
                 continue 
             count += 1
-            segment = self.processor.fade_io(audio=segment, sr=self.args.sample_rate, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
+            segment = self.processor.fade_io(segment, self.args.sample_rate, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
             segment = self.processor.filter(segment, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
             segment = self.processor.normalise_audio(segment, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
