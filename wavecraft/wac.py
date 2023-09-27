@@ -131,12 +131,12 @@ def load_files(input):
 
 if __name__ == "__main__":
     
+    utils.print_ascii_art()
     formatter_class=lambda prog: argparse.HelpFormatter(prog,
     max_help_position=8, width=80, indent_increment=4)
-    usage = "wave_craft.py operation [options] arg"
-    parser = argparse.ArgumentParser(prog='Wave Craft', description="A command line tool for audio manipulation", epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
-                                     usage=usage, formatter_class=formatter_class)
-    
+    usage = "wac.py operation [options] arg"
+    parser = argparse.ArgumentParser(prog='Wave Craft', epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
+                                     formatter_class=formatter_class, usage=usage)
     parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "wmeta", "rmeta"], 
                     help="Operation to perform. See below for details on each operation.",
                     metavar='operation', nargs='?')
