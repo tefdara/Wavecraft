@@ -21,8 +21,10 @@ def mode_handler(func):
             else:
                 prev_result = np.copy(result)
                 utils.message_logger.info("Playing preview")
+                # utils.message_logger.info("Press 's' to skip preview")
                 sd.play(prev_result, samplerate=self.args.sample_rate)
                 sd.wait()
+                
                 while True:
                     confirmation = input(f"\n{utils.colors.GREEN}Do you want to render the results?{utils.colors.ENDC}\n\n1) Render\n2) Replay preview\n3) Exit\n")
                     if confirmation.lower() == '1':
@@ -38,8 +40,7 @@ def mode_handler(func):
                         utils.warning_logger.warn("Aborting render")
                         break
                     else:
-                        utils.error_logger.error("Invalid input!")
-                        utils.warning_logger.warn("Choose one of the options below")
+                        utils.error_logger.error("\nInvalid input! Choose one of the options below.")
                         continue
                 return
         else:

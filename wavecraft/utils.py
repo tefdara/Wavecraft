@@ -351,7 +351,24 @@ def compute_curve(x, curve_type='exp'):
         
     return fade_curve
 
-
+def key_pressed(key):
+    try:
+        import msvcrt
+        preseed = msvcrt.kbhit() and msvcrt.getch() == key
+        print(preseed)
+        return preseed
+    except ImportError:
+        import termios
+        import sys
+        import tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+            return ch == key
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 #######################
 # progress bar
 #######################
