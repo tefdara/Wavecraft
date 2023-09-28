@@ -44,11 +44,13 @@ def main(args):
                 continue
             if not librosa.util.valid_audio(args.y):
                 utils.error_logger.error(f'{file} is not a valid audio file!')
+                sys.exit()
+            args.num_samples = args.y.shape[-1]
+            args.duration = args.num_samples / args.sample_rate
+            args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
+            args.num_frames = int(args.num_samples / args.hop_size)
         
-        args.num_samples = args.y.shape[-1]
-        args.duration = args.num_samples / args.sample_rate
-        args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
-        args.num_frames = int(args.num_samples / args.hop_size)
+        
         extra = utils.extra_log_string('', f'{os.path.basename(file)}')
         if args.operation == "segment":
             utils.info_logger.info('Segmenting', extra=extra)

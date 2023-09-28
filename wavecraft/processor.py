@@ -314,7 +314,22 @@ class Processor:
     def batch_delete(self, input_dir):
         for file in os.listdir(input_dir):
             os.remove(os.path.join(input_dir, file))
+            
+    def pan(self, y, pan, sr):
+        if len(y.shape) == 1:
+            y = np.expand_dims(y, axis=1)
+        assert (y.ndim == 2)
+        assert (y.shape[1] == 2)
+        assert (pan >= -1 and pan <= 1)
+        left = np.sqrt(0.5 * (1 - pan))
+        right = np.sqrt(0.5 * (1 + pan))
+        return np.hstack((left * y[:, 0:1], right * y[:, 1:2]))
     
+    def mono(self, y, sr):
+        if len(y.shape) == 1:
+            return y
+        else:
+            return np.mean(y, axis=1)
     
         
 
