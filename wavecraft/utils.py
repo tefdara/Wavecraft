@@ -18,8 +18,31 @@ class colors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+def concat_metadata(meta_data, craft_data):
+        # print (meta_data)
+    if meta_data is None:
+        meta_data = ''
+        meta_data+=str(craft_data)
+    else:
+        # check if the values are the same
+        for line in craft_data.splitlines():
+            if line in meta_data:
+                # check if the values are the same
+                if line.split(':')[1].strip() == meta_data.split(':')[1].strip():
+                    continue
+                else:
+                    # if the values are different then replace the old value with the new one
+                    meta_data = meta_data.replace(line, '')
+                    print(f'{colors.YELLOW}Overwriting metadata {line}...{colors.ENDC}')
+                    meta_data+=str(line)
+            else:
+                if line != craft_data.splitlines()[-1]:
+                    meta_data+=str(line)+'\n'
+                else:
+                    meta_data+=str(line)
+    return meta_data
 
-def extract_metadata(input_file, args):
+def extract_metadata(input_file):
     # this command will extract the comment metadata from the input file
     # -show_entries format_tags=comment will show the comment metadata
     # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
@@ -31,47 +54,18 @@ def extract_metadata(input_file, args):
         print(f'{colors.RED}ffmpeg is not installed. Please install it if you want to copy the metadata over.{colors.ENDC}')
         return None
     
-    source_m, seg_m = generate_metadata(input_file, args)
-    # convert dicts to string and format it
-    source_m = '\n'.join([f'{k}:{v}' for k, v in source_m.items()])
-    seg_m = '\n'.join([f'{k}:{v}' for k, v in seg_m.items()])
-    meta_data = source_m + seg_m
-    # print (meta_data)
-    if output is None:
-        output = ''
-        output+=str(meta_data)
-    else:
-        # check if the values are the same
-        for line in meta_data.splitlines():
-            if line in output:
-                # check if the values are the same
-                if line.split(':')[1].strip() == output.split(':')[1].strip():
-                    continue
-                else:
-                    # if the values are different then replace the old value with the new one
-                    output = output.replace(line, '')
-                    print(f'{colors.YELLOW}Overwriting metadata {line}...{colors.ENDC}')
-                    output+=str(line)
-            else:
-                if line != meta_data.splitlines()[-1]:
-                    output+=str(line)+'\n'
-                else:
-                    output+=str(line)
     return output
-
+    
 def generate_metadata(input_file, args):
     source_file_name = os.path.basename(input_file)
-    # get the file creation time and date from os
     creation_time = os.stat(input_file)
     # convert the timestamp to a human readable format
     creation_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(creation_time.st_ctime))
-    # request the sample rate, bit depth and number of channels using ffprobe
     command = [
         'ffprobe',  input_file, '-v', 'error', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
     output, _ = process.communicate()
-    # output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     
     source_metadata = {}
     source_metadata['source_file_name'] = source_file_name
@@ -95,8 +89,15 @@ def generate_metadata(input_file, args):
     segmentation_metadata['seg_n_fft'] = args.n_fft
     segmentation_metadata['seg_source_separation'] = args.source_separation
 
-    # source_metadata.update(segmentation_metadata)
-    return source_metadata, segmentation_metadata
+    # convert to string and
+    source_metadata = '\n'.join([f'{k}:{v}' for k, v in source_metadata.items()])
+    segmentation_metadata = '\n'.join([f'{k}:{v}' for k, v in segmentation_metadata.items()])
+    craft_data = source_metadata + segmentation_metadata
+    
+    prev_metadata = extract_metadata(input_file)
+    final_metadata = concat_metadata(prev_metadata, craft_data)
+    
+    return final_metadata
 
 def write_metadata(input_file, comment):
     if input_file.endswith('.json'):
@@ -372,7 +373,7 @@ def key_pressed(key):
 #######################
 # progress bar
 #######################
-def progress_bar(current, total, barLength = 20):
+def progress_bar(current, total, barLength = 50):
     percent = float(current) * 100 / total
     arrow   = '-' * int(percent/100 * barLength - 1) + '>'
     spaces  = ' ' * (barLength - len(arrow))

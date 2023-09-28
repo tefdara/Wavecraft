@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 
-import os, sys, argparse
+import os, sys, argparse, time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import librosa, soundfile as sf
 from wavecraft import *
 
 def main(args):
     dsp = args.operation not in ["wmeta", "rmeta", "info"]
-    process = args.operation in ["filter", "norm", "fade", "trim"]
+    process = args.operation not in ["segment", "extract", "proxim", "onset", "beat", "decomp"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
     window_length = args.window_length = 384 # for use with rythm features, otherwise window length = n_fft
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
+    t=0
+    while t < 1:
+        utils.progress_bar(t, 1)
+        t+=0.01
+        time.sleep(0.01)
+        
+    utils.message_logger.info('Loading files ')
     files = load_files(args.input)
-    print('')
-    
     if args.operation == "proxim":
         extra = utils.extra_log_string('Calculating', '')
         utils.info_logger.info('proximity metric', extra=extra)
@@ -36,6 +41,7 @@ def main(args):
             try:
                 if process:
                     args.y, args.sample_rate = sf.read(file, dtype='float32')
+                    args.meta_data = utils.extract_metadata(file)
                     args.output = args.input
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
@@ -83,7 +89,16 @@ def main(args):
             processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
         elif args.operation == "trim":
             utils.info_logger.info('Trimming', extra=extra)
-            processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)                 
+            processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
+        elif args.operation == "pan":
+            utils.info_logger.info('Panning', extra=extra)
+            processor.pan(args.y, args.sample_rate, args.pan_value)
+        elif args.operation == "mono":
+            utils.info_logger.info('Converting to mono', extra=extra)
+            processor.mono(args.y, args.sample_rate)             
+        elif args.operation == "split":
+            utils.info_logger.info('Splitting', extra=extra)
+            processor.split(args.y, args.sample_rate, args.split_points)
             
         else:
             if args.operation == "wmeta":
@@ -143,7 +158,7 @@ if __name__ == "__main__":
     usage = "wac.py operation [options] arg"
     parser = argparse.ArgumentParser(prog='Wave Craft', epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
                                      formatter_class=formatter_class, usage=usage)
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "wmeta", "rmeta"], 
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "mono", "wmeta", "rmeta"], 
                     help="Operation to perform. See below for details on each operation.",
                     metavar='operation', nargs='?')
     parser.add_argument("input", type=str, 
@@ -239,6 +254,12 @@ if __name__ == "__main__":
     trim_group.add_argument("-tr", "--trim-range", type=str, default=None, help="Trim position range in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. -0.5).", required=False, metavar='')
     
     fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file', description='operation -> fade')
+    
+    pan_group = parser.add_argument_group(title='Pan - pans the audio file', description='operation -> pan')
+    pan_group.add_argument("-pv", "--pan-amount", type=float, default=0, help="Pan amount. Default is 0.", required=False, metavar='')
+    
+    split_group = parser.add_argument_group(title='Split - splits the audio file into multiple files', description='operation -> split')
+    split_group.add_argument("-sp", "--split-points", type=float, default=None, help="Split points in seconds. It can be a single value or a list of split points (e.g. 0.5 0.2 3).", required=False, nargs='+', metavar='')
     
     args = parser.parse_args()
     main(args)

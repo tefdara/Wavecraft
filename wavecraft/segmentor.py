@@ -20,7 +20,7 @@ class Segmentor:
         # backtrack 
         segment_samps = segment_samps - int(self.args.backtrack_length * sr_m / 1000)
         
-        prev_metadata = utils.extract_metadata(self.args.input, self.args)
+        meta_data = utils.generate_metadata(self.args.input, self.args)
         count = 0
         for i in range(len(segment_samps)):
             if i == len(segment_samps) - 1:
@@ -46,9 +46,9 @@ class Segmentor:
             
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             print(f'{utils.colors.CYAN}Saving segment {count} to {segment_path}.{utils.colors.ENDC} {utils.colors.BLUE}length: {segment_length}s{utils.colors.ENDC}\n')
-            utils.write_metadata(segment_path, prev_metadata)
+            utils.write_metadata(segment_path, meta_data)
 
-        utils.export_metadata(prev_metadata, self.base_segment_path, data_type='seg_metadata')
+        utils.export_metadata(meta_data, self.base_segment_path, data_type='seg_metadata')
                 
         
         print(f'\n[{utils.colors.GREEN}Done{utils.colors.ENDC}]\n')

@@ -16,7 +16,7 @@ def mode_handler(func):
         if self.mode == "render":
             if self.batch:
                 utils.warning_logger.warn("Batch processing. Skipping preview...")
-                self._render(result)
+                self._render(result, args.output)
                 return
             else:
                 prev_result = np.copy(result)
@@ -55,8 +55,9 @@ class Processor:
         self.mode = mode
         self.batch = batch
     
-    def _render(self, y):
-        sf.write(self.args.output, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
+    def _render(self, y, file):
+        sf.write(file, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
+        utils.write_metadata(file, self.args.meta_data)
     
     def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
         
@@ -314,7 +315,8 @@ class Processor:
     def batch_delete(self, input_dir):
         for file in os.listdir(input_dir):
             os.remove(os.path.join(input_dir, file))
-            
+    
+    @mode_handler        
     def pan(self, y, pan, sr):
         if len(y.shape) == 1:
             y = np.expand_dims(y, axis=1)
@@ -325,11 +327,40 @@ class Processor:
         right = np.sqrt(0.5 * (1 + pan))
         return np.hstack((left * y[:, 0:1], right * y[:, 1:2]))
     
+    @mode_handler
     def mono(self, y, sr):
         if len(y.shape) == 1:
             return y
         else:
             return np.mean(y, axis=1)
+    
+    def split(self, y, sr, split_points, name='split'):
+        split_points = [int(x*sr) for x in split_points]
+        if len(split_points) == 1:
+            utils.message_logger.info('Rendering split files')
+            y_1 = y[:split_points[0]]
+            self._render(y_1, name+'_1.wav')
+            y_2 = y[split_points[0]:]
+            self._render(y_2, name+'_2.wav')
+            return
+        for i in range(len(split_points)):
+            if i == 0:
+                y_1 = y[:split_points[i]]
+                y_2 = y[split_points[i]:split_points[i+1]]
+            else:
+                y_1 = y[split_points[i-1]:split_points[i]]
+                if i == len(split_points)-1:
+                    y_2 = y[split_points[i]:len(y)]
+                
+                utils.message_logger.info('Rendering split files')
+                self._render(y_1, name+f'_{i}.wav')
+                self._render(y_2, name+f'_{i+1}.wav')
+            
+        # split_points = int(split_points * sr)
+        # y_s = y[:split_points]
+        # y_end = y[split_points:]
+        # self._render(y_s)
+        # self._render(y_end)
     
         
 
