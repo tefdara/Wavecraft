@@ -62,19 +62,19 @@ class ProxiMetor:
         # Standardize either specific metric or all metrics under a class
         if metric:
             if metric.endswith('_'):  # Wildcard matching
-                print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} {utils.colors.ENDC}')
+                debug.log_info(f'Using <wildcard matching for <{metric}> ')
                 prefix = clss + "_" + metric[:-1] # Remove the wildcard
                 columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
                 df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
             else:
-                print(f'{utils.colors.MAGENTA}Using exact matching for {metric} {utils.colors.ENDC}')
+                debug.log_info(f'Using <exact matching> for <{metric}> ')
                 metric = clss + "_" + metric
                 if metric not in df.columns:
                     raise ValueError(f"The metric {metric} doesn't exist in the data.")
                 df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
                 columns_to_compare = [metric + "_standardized"]
         else:
-            print(f'{utils.colors.MAGENTA}Using all metrics for {clss} {utils.colors.ENDC}')
+            debug.log_info(f'Using <all metrics> for <{clss}> ')
             descriptors_columns = [col for col in df.columns if clss in col]
             standardized_features = scaler.fit_transform(df[descriptors_columns])
             df[descriptors_columns] = standardized_features
@@ -182,12 +182,12 @@ class ProxiMetor:
     
     def get_metric_columns(self, df, metric, scaler, clss="stats"):
         if metric.endswith('_'):  # Wildcard matching
-            print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} {utils.colors.ENDC}')
+            print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} ')
             prefix = clss + "_" + metric[:-1] # Remove the wildcard
             columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
             df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
         else:
-            print(f'{utils.colors.MAGENTA}Using exact matching for {metric} {utils.colors.ENDC}')
+            print(f'{utils.colors.MAGENTA}Using exact matching for {metric} ')
             metric = clss + "_" + metric
             if metric not in df.columns:
                 raise ValueError(f"The metric {metric} doesn't exist in the data.")
@@ -250,7 +250,7 @@ class ProxiMetor:
                 if os.path.exists(source_file_path):
                     # check if the file already exists in the target directory
                     if not os.path.exists(os.path.join(target_folder, sound)):
-                        print(f'{utils.colors.CYAN} Copying {sound} {utils.colors.ENDC}')
+                        print(f'{utils.colors.CYAN} Copying {sound} ')
                         shutil.copy2(source_file_path, target_folder)
                     if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
                         shutil.copy2(analysis_file_path, analysis_folder)
@@ -258,7 +258,7 @@ class ProxiMetor:
                     debug.log_error(f'File {sound} does not exist')
 
                 await asyncio.sleep(0.005)  # just to mimic some delay
-            print(f'{utils.colors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.colors.ENDC}\n')
+            debug.log_done(f'Copied {len(sound_files)} files to {target_folder}')
         except Exception as e:
             debug.log_error(f'Error occurred while copying files: {e}')
 
@@ -277,7 +277,7 @@ class ProxiMetor:
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        print(f'{utils.colors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} {utils.colors.ENDC}')
+        print(f'{utils.colors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} ')
         await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)

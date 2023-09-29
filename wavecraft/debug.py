@@ -14,15 +14,15 @@ class colors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-class Debug:
+class Logger:
     
     def __init__(self):
-        self.error_logger = self.get_logger('error', 'wavecraft')
-        self.logger = self.get_logger('message', 'wavecraft')
-        self.warning_logger = self.get_logger('warning', 'wavecraft')
-        self.value_logger = self.get_logger('value', 'wavecraft')
+        self.error_logger = self.make_logger('error', 'wavecraft')
+        self.logger = self.make_logger('message', 'wavecraft')
+        self.warning_logger = self.make_logger('warning', 'wavecraft')
+        self.value_logger = self.make_logger('value', 'wavecraft')
         
-    def get_logger(self, type, name):
+    def make_logger(self, type, name):
         logger = logging.Logger(name)
         handler = logging.StreamHandler()
         logger.setLevel(logging.INFO)
@@ -43,6 +43,16 @@ class Debug:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
+
+    def get_logger(self, type):
+        if type == 'message':
+            return self.logger
+        elif type == 'error':
+            return self.error_logger
+        elif type == 'warning':
+            return self.warning_logger
+        elif type == 'value':
+            return self.value_logger
             
     def extra_log_string(self, prepend, append):
         return {'prepend': prepend, 'append': append}   
@@ -52,7 +62,6 @@ class Debug:
     
     def parse_message(self, message, type):
         #words that are wrapped in <> or any numbers will highlight based on the type of message
-
         type = type.upper()
         if type == 'INFO':
             message = message.replace('<', f'{colors.CYAN}')
@@ -66,12 +75,12 @@ class Debug:
             message = message.replace('<', f'{colors.YELLOW}')
             level = type.replace('WARNING', f'[ {colors.YELLOW}WARNING{colors.ENDC} ]')
         elif type == 'ERROR':
-            message = {colors.RED}+message+{colors.ENDC}
+            message = colors.RED+message+colors.ENDC
             message = message.replace('<', f'{colors.ENDC}{colors.YELLOW}')
             message = message.replace('>', f'{colors.ENDC}')
             level = type.replace('ERROR', f'[ {colors.RED}ERROR{colors.ENDC} ]')
         elif type == 'VALUE':
-            message = {colors.CYAN}+message+{colors.ENDC}
+            message = colors.CYAN+message+colors.ENDC
             level = ''
         elif type == 'DONE':
             message = message.replace('<', f'{colors.GREEN}')
@@ -82,28 +91,42 @@ class Debug:
 
         level={'level': level}
         return level, message
+
+logger = Logger() 
+class Debug:
     
     @staticmethod
-    def log_info(self, message):
-        level, message = self.parse_message(message, type='info')
-        self.logger.info(message, extra=level)
-    @staticmethod    
-    def log_error(self, message):
-        level, message = self.parse_message(message, type='error')
-        self.error_logger.error(message, extra=level)
+    def log_info(message):
+        level, message = logger.parse_message(message, type='info')
+        log = logger.get_logger('message')
+        log.info(message, extra=level)
+        
     @staticmethod
-    def log_warning(self, message):
-        level, message = self.parse_message(message, type='warning')
-        self.warning_logger.info(message, extra=level)
+    def log_error(message):
+        level, message = logger.parse_message(message, type='error')
+        log = logger.get_logger('error')
+        log.error(message, extra=level)
+    
     @staticmethod
-    def log_stat(self, message):
-        level, message = self.parse_message(message, type='stat')
-        self.logger.info(message, extra=level)
+    def log_warning(message):
+        level, message = logger.parse_message(message, type='warning')
+        log = logger.get_logger('warning')
+        log.info(message, extra=level)
+    
     @staticmethod
-    def log_value(self, value, unit):
-        level, message = self.parse_message(message, type='value')
-        self.value_logger.info(message, extra=level)
-    @staticmethod    
-    def log_done(self, message):
-        level, message = self.parse_message(message, type='info')
-        self.value_logger.info('', extra=level)
+    def log_stat(message):
+        level, message = logger.parse_message(message, type='stat')
+        log = logger.get_logger('message')
+        log.info(message, extra=level)
+    
+    @staticmethod
+    def log_value(value, unit):
+        level, message = logger.parse_message(message, type='value')
+        log = logger.get_logger('value')
+        log.info(message, extra=level)
+        
+    @staticmethod
+    def log_done(message):
+        level, message = logger.parse_message(message, type='done')
+        log = logger.get_logger('message')
+        log.info(message, extra=level)
