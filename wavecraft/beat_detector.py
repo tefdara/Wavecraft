@@ -3,7 +3,6 @@ import numpy as np
 import argparse
 import scipy
 import os
-from wavecraft.utils import colors
 
 class BeatDetector:
     def __init__(self, args):
@@ -61,8 +60,8 @@ class BeatDetector:
         bound_frames = librosa.util.fix_frames(bound_frames, x_min=0, x_max=chroma.shape[1]-1)
         bound_times = librosa.frames_to_time(bound_frames, sr=sr, hop_length=self.hop_size)
         
-        print(f'{colors.GREEN}Detected {len(bound_frames)} beats.{colors.ENDC}')
-        print(f'{colors.GREEN}Beat times: {bound_times}{colors.ENDC}')
+        # print(f'{colors.GREEN}Detected {len(bound_frames)} beats.{colors.ENDC}')
+        # print(f'{colors.GREEN}Beat times: {bound_times}{colors.ENDC}')
         
         return bound_frames
     

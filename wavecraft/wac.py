@@ -3,9 +3,23 @@
 import os, sys, argparse, time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import librosa, soundfile as sf
-from wavecraft import *
+from wavecraft import * 
+from wavecraft.debug import Debug as debug
+
 
 def main(args):
+    t=0
+    while t <= 1:
+        utils.progress_bar(t, 1, message=args.operation)
+        t+=0.01
+        time.sleep(0.007)
+    
+    if args.operation == "proxim":
+        debug.log_info('Calculating <proximity metric>')
+        craft = ProxiMetor(args)
+        craft.main()
+        return
+    
     dsp = args.operation not in ["wmeta", "rmeta", "info"]
     process = args.operation not in ["segment", "extract", "proxim", "onset", "beat", "decomp"]
     # store these as they will be adjusted for short signals
@@ -14,20 +28,9 @@ def main(args):
     window_length = args.window_length = 384 # for use with rythm features, otherwise window length = n_fft
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
-    t=0
-    while t < 1:
-        utils.progress_bar(t, 1)
-        t+=0.01
-        time.sleep(0.01)
-        
-    utils.message_logger.info('Loading files ')
+    
+    debug.log_info('Loading files...')
     files = load_files(args.input)
-    if args.operation == "proxim":
-        extra = utils.extra_log_string('Calculating', '')
-        utils.info_logger.info('proximity metric', extra=extra)
-        craft = ProxiMetor(args)
-        craft.main()
-        return
     
     if process:
         batch = True
@@ -46,71 +49,69 @@ def main(args):
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
             except RuntimeError:
-                utils.error_logger.error(f'Could not load {file}!')
+                debug.log_error(f'Could not load {file}!')
                 continue
             if not librosa.util.valid_audio(args.y):
-                utils.error_logger.error(f'{file} is not a valid audio file!')
+                debug.log_error(f'{file} is not a valid audio file!')
                 sys.exit()
             args.num_samples = args.y.shape[-1]
             args.duration = args.num_samples / args.sample_rate
             args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
             args.num_frames = int(args.num_samples / args.hop_size)
         
-        
-        extra = utils.extra_log_string('', f'{os.path.basename(file)}')
         if args.operation == "segment":
-            utils.info_logger.info('Segmenting', extra=extra)
+            debug.log_info(f'<Segmenting> {file}')
             craft = Segmentor(args)
             craft.main()
         elif args.operation == "extract":
-            utils.info_logger.info('Extracting features for', extra=extra)
+            debug.log_info(f'<Extracting features> for {file}')
             craft = Extractor(args)
             craft.main()
         elif args.operation == "onset":
-            utils.info_logger.info('Detecting onsets for', extra=extra)
+            debug.log_info(f'Detecting <onsets> for {file}')
             craft = OnsetDetector(args)
             craft.main()
         elif args.operation == "beat":
-            utils.info_logger.info('Detecting beats for', extra=extra)
+            debug.log_info(f'Detecting <beats> for {file}')
             craft = BeatDetector(args)
             craft.main()
         elif args.operation == "decomp":
-            utils.info_logger.info('Decomposing', extra=extra)
+            debug.log_info(f'<Decomposing> {file}')
             craft = Decomposer(args)
             craft.main()
         elif args.operation == "filter":
-            utils.info_logger.info('Applying filter', extra=extra)
+            debug.log_info(f'Applying <filter> to {file}')
             processor.filter(args.y, args.sample_rate, args.filter_frequency, args.filter_type)
         elif args.operation == "norm":
-            utils.info_logger.info('Normalising', extra=extra)
+            debug.log_info(f'<Normalising> {file}')
             processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode) 
         elif args.operation == "fade":
-            utils.info_logger.info('Applying fade to', extra=extra)
+            debug.log_info(f'Applying> <fade to {file}')
             processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
         elif args.operation == "trim":
-            utils.info_logger.info('Trimming', extra=extra)
+            debug.log_info(f'<Trimming> {file}')
             processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
         elif args.operation == "pan":
-            utils.info_logger.info('Panning', extra=extra)
+            debug.log_info(f'<Panning> {file}')
             processor.pan(args.y, args.sample_rate, args.pan_value)
         elif args.operation == "mono":
-            utils.info_logger.info('Converting to mono', extra=extra)
+            debug.log_info(f'Converting {file} to <mono>')
             processor.mono(args.y, args.sample_rate)             
         elif args.operation == "split":
-            utils.info_logger.info('Splitting', extra=extra)
+            debug.log_info(f'<Splitting> {file}')
             processor.split(args.y, args.sample_rate, args.split_points)
             
         else:
             if args.operation == "wmeta":
-                utils.info_logger.info('Writing metadata', extra=extra)
+                debug.log_info('Writing metadata')
                 if(args.meta_file):
                     args.meta = utils.load_json(args.meta_file)
                 else:
-                    utils.error_logger.error('No metadata file provided!')
+                    utils.error_debug.error('No metadata file provided!')
                     sys.exit()
                 utils.write_metadata(file, args.meta)
             if args.operation == "rmeta":
-                utils.info_logger.info('Extracting metadata', extra=extra)
+                debug.log_info('Extracting metadata')
                 utils.extract_metadata(file, args)
             
         args.n_fft = n_fft
@@ -160,8 +161,8 @@ if __name__ == "__main__":
                                      formatter_class=formatter_class, usage=usage)
     parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "mono", "wmeta", "rmeta"], 
                     help="Operation to perform. See below for details on each operation.",
-                    metavar='operation', nargs='?')
-    parser.add_argument("input", type=str, 
+                    metavar='operation')
+    parser.add_argument("input", type=str,
                     help="Path to the audio, metadata or dataset file. It can be a directory for batch processing. It is valid for all operations\n ")
     
     parser._action_groups[0].title = "Required arguments"
@@ -220,7 +221,9 @@ if __name__ == "__main__":
                         help='Use opetions file to fine tune the metric learning')
     proxi_metor_group.add_argument('-mn', '--n-max', type=int, default=-1, 
                         help='Max number of similar files to retrieve, Default: -1 (all)', metavar='')
-    
+    proxi_metor_group.add_argument('-mtr', '--metric-range', type=float, default=None, nargs='+', 
+                        help= 'Range of values to test for a specific metric. Default: None', metavar='')
+                                   
     # Decomposition 
     decomposition_group = parser.add_argument_group(title='Decomposition - decomposes the audio file into harmonic, percussive or n components', description='operation -> decomp')
     decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
@@ -262,6 +265,10 @@ if __name__ == "__main__":
     split_group.add_argument("-sp", "--split-points", type=float, default=None, help="Split points in seconds. It can be a single value or a list of split points (e.g. 0.5 0.2 3).", required=False, nargs='+', metavar='')
     
     args = parser.parse_args()
+    
+    if not os.path.isdir(args.input) and not os.path.isfile(args.input):
+        debug.log_error(f'Could not find input: {args.input}! Make sure the input is a valid  file or directory.')
+        sys.exit()
     main(args)
     
     
