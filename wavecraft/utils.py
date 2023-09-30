@@ -1,25 +1,34 @@
 import os, time
 import numpy as np 
 import subprocess, tempfile, json
-import logging
+import threading
+from wavecraft.debug import Debug as debug
 
-# Define color codes for print messages
-class colors:
-    WHITE = '\033[97m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    CYAN = '\033[96m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    GREY = '\033[37m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+def concat_metadata(meta_data, craft_data):
+        # print (meta_data)
+    if meta_data is None:
+        meta_data = ''
+        meta_data+=str(craft_data)
+    else:
+        # check if the values are the same
+        for line in craft_data.splitlines():
+            if line in meta_data:
+                # check if the values are the same
+                if line.split(':')[1].strip() == meta_data.split(':')[1].strip():
+                    continue
+                else:
+                    # if the values are different then replace the old value with the new one
+                    meta_data = meta_data.replace(line, '')
+                    debug.log_warning(f'Overwriting metadata {line}...')
+                    meta_data+=str(line)
+            else:
+                if line != craft_data.splitlines()[-1]:
+                    meta_data+=str(line)+'\n'
+                else:
+                    meta_data+=str(line)
+    return meta_data
 
-
-def extract_metadata(input_file, args):
+def extract_metadata(input_file):
     # this command will extract the comment metadata from the input file
     # -show_entries format_tags=comment will show the comment metadata
     # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
@@ -28,50 +37,21 @@ def extract_metadata(input_file, args):
     ]
     output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     if 'not found' in output:
-        print(f'{colors.RED}ffmpeg is not installed. Please install it if you want to copy the metadata over.{colors.ENDC}')
+        debug.log_error('ffmpeg is not installed. Please install it if you want to copy the metadata over.')
         return None
     
-    source_m, seg_m = generate_metadata(input_file, args)
-    # convert dicts to string and format it
-    source_m = '\n'.join([f'{k}:{v}' for k, v in source_m.items()])
-    seg_m = '\n'.join([f'{k}:{v}' for k, v in seg_m.items()])
-    meta_data = source_m + seg_m
-    # print (meta_data)
-    if output is None:
-        output = ''
-        output+=str(meta_data)
-    else:
-        # check if the values are the same
-        for line in meta_data.splitlines():
-            if line in output:
-                # check if the values are the same
-                if line.split(':')[1].strip() == output.split(':')[1].strip():
-                    continue
-                else:
-                    # if the values are different then replace the old value with the new one
-                    output = output.replace(line, '')
-                    print(f'{colors.YELLOW}Overwriting metadata {line}...{colors.ENDC}')
-                    output+=str(line)
-            else:
-                if line != meta_data.splitlines()[-1]:
-                    output+=str(line)+'\n'
-                else:
-                    output+=str(line)
     return output
-
+    
 def generate_metadata(input_file, args):
     source_file_name = os.path.basename(input_file)
-    # get the file creation time and date from os
     creation_time = os.stat(input_file)
     # convert the timestamp to a human readable format
     creation_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(creation_time.st_ctime))
-    # request the sample rate, bit depth and number of channels using ffprobe
     command = [
         'ffprobe',  input_file, '-v', 'error', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
     output, _ = process.communicate()
-    # output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     
     source_metadata = {}
     source_metadata['source_file_name'] = source_file_name
@@ -95,8 +75,15 @@ def generate_metadata(input_file, args):
     segmentation_metadata['seg_n_fft'] = args.n_fft
     segmentation_metadata['seg_source_separation'] = args.source_separation
 
-    # source_metadata.update(segmentation_metadata)
-    return source_metadata, segmentation_metadata
+    # convert to string and
+    source_metadata = '\n'.join([f'{k}:{v}' for k, v in source_metadata.items()])
+    segmentation_metadata = '\n'.join([f'{k}:{v}' for k, v in segmentation_metadata.items()])
+    craft_data = source_metadata + segmentation_metadata
+    
+    prev_metadata = extract_metadata(input_file)
+    final_metadata = concat_metadata(prev_metadata, craft_data)
+    
+    return final_metadata
 
 def write_metadata(input_file, comment):
     if input_file.endswith('.json'):
@@ -128,9 +115,9 @@ def export_metadata(data, output_path, data_type='metadata'):
             data_dict[item[0].strip()] = ''
     output_file = output_path+f'_{data_type}.json'
     if os.path.exists(output_file):
-        print(f'{colors.YELLOW}Overwriting JSON metadata {os.path.basename(output_file)}...{colors.ENDC}')
+        debug.log_warning(f'Overwriting JSON metadata {os.path.basename(output_file)}...')
     else:
-        print(f'{colors.CYAN}Exporting JSON metadata {os.path.basename(output_file)}...{colors.ENDC}')
+        debug.log_info(f'Exporting JSON metadata {os.path.basename(output_file)}...')
     with open(output_file, 'w') as file:
         json.dump(data_dict, file, indent=4)
         
@@ -141,7 +128,7 @@ def load_json (input):
                 data = json.load(file)
                 return data
         except Exception as e:
-            print(f'{colors.RED}Error loading JSON file {input}. {str(e)}{colors.ENDC}')
+            debug.log_error(f'Error loading JSON file {input}. {str(e)}')
             return None
     elif os.path.isdir(input):
         data = {}
@@ -151,7 +138,7 @@ def load_json (input):
                     with open (os.path.join(input, file), 'r') as f:
                         data[file] = json.load(f)
                 except Exception as e:
-                    print(f'{colors.RED}Error loading JSON file {file}. {str(e)}{colors.ENDC}')
+                    debug.log_error(f'Error loading JSON file {file}. {str(e)}')
                     return None
         return data
     
@@ -172,7 +159,7 @@ def sci_note_to_float(array, precision=2):
             return 0
         return '{:.2f}'.format(array)
     else:
-        print(f'{colors.RED}Invalid input. Expected a numpy array or a float, got {type(array)}{colors.ENDC}')
+        debug.log_error(f'Invalid input. Expected a numpy array or a float, got {type(array)}')
         return None
         
 def check_format(file):
@@ -266,61 +253,16 @@ def load_dataset(data_path):
                             # Convert any string numbers to floats in the nested dict.
                             data_dicts.append(deep_float_conversion(data_content))
                     except json.JSONDecodeError:
-                        print(f"Error decoding JSON from file: {file}")
+                        debug.log_error(f"Error decoding JSON from file: {file}")
                     except Exception as e:
-                        print(f"Error reading from file {file}. Error: {e}")
+                        debug.log_error(f"Error reading from file {file}. Error: {e}")
     else:
        raise ValueError("The data path must be a directory.")
     return data_dicts
 
-def get_logger(type, name):
-    logger = logging.Logger(name)
-    handler = logging.StreamHandler()
-    logger.setLevel(logging.INFO)
-    handler.setLevel(logging.INFO)
-    
-    if type == 'info':
-        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ] %(prepend)s \033[96m%(message)s\033[0m %(append)s')
-    elif type == 'stat':
-        formatter = logging.Formatter('\n[ \033[92mSTAT\033[0m ] \033[92m%(message)s\033[0m')
-    elif type == 'value':
-        formatter = logging.Formatter('%(message)-18s \033[96m %(value)s\033[0m (%(unit)s)')
-    elif type == 'error':
-        logger.setLevel(logging.ERROR)
-        handler.setLevel(logging.ERROR)
-        formatter = logging.Formatter('[ \033[91m%(levelname)s \033[0m] \033[91m%(message)s\033[0m')
-    elif type == 'warning':
-        logger.setLevel(logging.WARNING)
-        handler.setLevel(logging.WARNING)
-        formatter = logging.Formatter('[\033[93m%(levelname)s\033[0m] %(message)s')
-    elif type == 'debug':
-        logger.setLevel(logging.DEBUG)
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(message)s')
-    elif type == 'message':
-        logger.setLevel(logging.DEBUG)
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('[ \033[92m%(levelname)s\033[0m ]  %(message)s')
-        
-        
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
-
-        
-def extra_log_string(prepend, append):
-    return {'prepend': prepend, 'append': append}   
-
-def extra_log_value(value, unit):
-    return {'value': value, 'unit': unit}
-
-info_logger = get_logger('info', 'wavecraft')
-error_logger = get_logger('error', 'wavecraft')
-statlogger = get_logger('stat', 'wavecraft')
-value_logger = get_logger('value', 'wavecraft')
-message_logger = get_logger('message', 'wavecraft')
-warning_logger = get_logger('warning', 'wavecraft')
-
+#######################
+# File management
+#######################
 def get_analysis_path():
     output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
     if not os.path.exists(output_cache_dir):
@@ -355,7 +297,6 @@ def key_pressed(key):
     try:
         import msvcrt
         preseed = msvcrt.kbhit() and msvcrt.getch() == key
-        print(preseed)
         return preseed
     except ImportError:
         import termios
@@ -370,16 +311,32 @@ def key_pressed(key):
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 #######################
-# progress bar
+# progress
 #######################
-def progress_bar(current, total, barLength = 20):
+def progress_bar(current, total, message='Progress', barLength = 50):
     percent = float(current) * 100 / total
     arrow   = '-' * int(percent/100 * barLength - 1) + '>'
     spaces  = ' ' * (barLength - len(arrow))
-    print(f'Progress: [{arrow}{spaces}] {percent:.2f} %', end='\r')
+    message = str(message)
+    print(f'{message}: [{arrow}{spaces}] {percent:.2f} %', end='\r')
     if current == total:
         print('\n')
 
+def processing_loop(stop_flag):
+    while not stop_flag.is_set():
+        for c in ['|', '/', '-', '\\']:
+            print(f'\rProcessing {c}', end='')
+            time.sleep(0.1)
+stop_flag = threading.Event()
+processing_thread = threading.Thread(target=processing_loop, args=(stop_flag,))
+
+def on_process_start():
+    processing_thread.start()
+
+def on_process_end():
+    stop_flag.set()
+    processing_thread.join()
+    
 #######################
 # ASCII Art
 #######################

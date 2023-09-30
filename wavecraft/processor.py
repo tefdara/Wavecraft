@@ -6,7 +6,7 @@ from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
 import wavecraft.utils as utils
 import sounddevice as sd
-
+from wavecraft.debug import Debug as debug
 
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
@@ -16,7 +16,7 @@ def mode_handler(func):
         if self.mode == "render":
             if self.batch:
                 utils.warning_logger.warn("Batch processing. Skipping preview...")
-                self._render(result)
+                self._render(result, args.output)
                 return
             else:
                 prev_result = np.copy(result)
@@ -55,31 +55,10 @@ class Processor:
         self.mode = mode
         self.batch = batch
     
-    def _render(self, y):
-        sf.write(self.args.output, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
+    def _render(self, y, file):
+        sf.write(file, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
+        utils.write_metadata(file, self.args.meta_data)
     
-    def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
-        
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
-        
-        for i in range(n_components):
-            # Reconstruct the spectrogram of the component
-            component_spectrogram = components[:, i:i+1] @ activations[i:i+1, :]
-            # Combine magnitude with the original phase
-            component_complex = component_spectrogram * phase
-            # Get the audio signal back using inverse STFT
-            y_comp = librosa.istft(component_complex, hop_length=hop_length)
-            
-            # Save the component to an audio file
-            sf.write(os.path.join(render_path, f'component_{i}.wav'), y_comp, sr)
-
-    def render_hpss(self, y_harmonic, y_percussive, render_path, sr=48000):
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
-            
-        sf.write(os.path.join(render_path, 'harmonic.wav'), y_harmonic, sr)
-        sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)
 
 #############################################
 # Fade
@@ -213,7 +192,7 @@ class Processor:
             return yt_stereo, (start_idx, end_idx)
 
         else:
-            print(f'{utils.colors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.colors.ENDC}')
+           debug.log_error("Invalid number of channels. Expected 1 or 2, got {}".format(y.shape[1]))
     @mode_handler
     def trim_range(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
         # e.g 0.1-0.5 means trim between 0.1 and 0.5 seconds
@@ -314,7 +293,8 @@ class Processor:
     def batch_delete(self, input_dir):
         for file in os.listdir(input_dir):
             os.remove(os.path.join(input_dir, file))
-            
+    
+    @mode_handler        
     def pan(self, y, pan, sr):
         if len(y.shape) == 1:
             y = np.expand_dims(y, axis=1)
@@ -325,11 +305,40 @@ class Processor:
         right = np.sqrt(0.5 * (1 + pan))
         return np.hstack((left * y[:, 0:1], right * y[:, 1:2]))
     
+    @mode_handler
     def mono(self, y, sr):
         if len(y.shape) == 1:
             return y
         else:
             return np.mean(y, axis=1)
+    
+    def split(self, y, sr, split_points, name='split'):
+        split_points = [int(x*sr) for x in split_points]
+        if len(split_points) == 1:
+            utils.message_logger.info('Rendering split files')
+            y_1 = y[:split_points[0]]
+            self._render(y_1, name+'_1.wav')
+            y_2 = y[split_points[0]:]
+            self._render(y_2, name+'_2.wav')
+            return
+        for i in range(len(split_points)):
+            if i == 0:
+                y_1 = y[:split_points[i]]
+                y_2 = y[split_points[i]:split_points[i+1]]
+            else:
+                y_1 = y[split_points[i-1]:split_points[i]]
+                if i == len(split_points)-1:
+                    y_2 = y[split_points[i]:len(y)]
+                
+                utils.message_logger.info('Rendering split files')
+                self._render(y_1, name+f'_{i}.wav')
+                self._render(y_2, name+f'_{i+1}.wav')
+            
+        # split_points = int(split_points * sr)
+        # y_s = y[:split_points]
+        # y_end = y[split_points:]
+        # self._render(y_s)
+        # self._render(y_end)
     
         
 

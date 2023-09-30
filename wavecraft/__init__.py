@@ -6,3 +6,4 @@ from onset_detector import OnsetDetector
 from decomposer import Decomposer
 from proxi_metor import ProxiMetor
 from segmentor import Segmentor
+from debug import Debug

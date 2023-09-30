@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
-import wavecraft.utils as utils, wavecraft.feature_extractor as fe
-
+import wavecraft.utils as utils
+from wavecraft.debug import Debug as debug
 
 class ProxiMetor:
     def __init__(self, args):
@@ -62,19 +62,19 @@ class ProxiMetor:
         # Standardize either specific metric or all metrics under a class
         if metric:
             if metric.endswith('_'):  # Wildcard matching
-                print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} {utils.colors.ENDC}')
+                debug.log_info(f'Using <wildcard matching for <{metric}> ')
                 prefix = clss + "_" + metric[:-1] # Remove the wildcard
                 columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
                 df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
             else:
-                print(f'{utils.colors.MAGENTA}Using exact matching for {metric} {utils.colors.ENDC}')
+                debug.log_info(f'Using <exact matching> for <{metric}> ')
                 metric = clss + "_" + metric
                 if metric not in df.columns:
                     raise ValueError(f"The metric {metric} doesn't exist in the data.")
                 df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
                 columns_to_compare = [metric + "_standardized"]
         else:
-            print(f'{utils.colors.MAGENTA}Using all metrics for {clss} {utils.colors.ENDC}')
+            debug.log_info(f'Using <all metrics> for <{clss}> ')
             descriptors_columns = [col for col in df.columns if clss in col]
             standardized_features = scaler.fit_transform(df[descriptors_columns])
             df[descriptors_columns] = standardized_features
@@ -138,7 +138,6 @@ class ProxiMetor:
                 distances.append((row["id"], dist))
         
         distances.sort(key=lambda x: x[1])
-        print(distances)
         return [item[0] for item in distances[:n]]
 
 
@@ -162,6 +161,34 @@ class ProxiMetor:
         distances.sort(key=lambda x: x[1])
         return [item[0] for item in distances[:n]]
 
+    def find_all_based_on_metric(self, identifier, df, metric, metric_range, clss="stats"):
+        scaler = StandardScaler()
+        if identifier is None:
+            identifier = df[(df[clss + "_" + metric] >= metric_range[0]) & (df[clss + "_" + metric] <= metric_range[1])].iloc[0]["id"]
+        # columns_to_compare = self.get_metric_columns(df, metric, scaler, clss)
+        # sound_data = df[df["id"] == identifier].iloc[0]
+        # distances = df[df["id"] != identifier].apply(
+        #     lambda row: (row["id"], distance.euclidean(sound_data[columns_to_compare].values, row[columns_to_compare].values)), 
+        #     axis=1
+        # ).tolist()
+        # distances.sort(key=lambda x: x[1])
+        return df[(df[clss + "_" + metric] >= metric_range[0]) & (df[clss + "_" + metric] <= metric_range[1])]["id"].tolist() 
+    
+    def get_metric_columns(self, df, metric, scaler, clss="stats"):
+        if metric.endswith('_'):  # Wildcard matching
+            debug.log_info(f'Using wildcard matching for {metric}')
+            prefix = clss + "_" + metric[:-1] # Remove the wildcard
+            columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
+            df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
+        else:
+            debug.log_info(f'Using exact matching for {metric}')
+            metric = clss + "_" + metric
+            if metric not in df.columns:
+                raise ValueError(f"The metric {metric} doesn't exist in the data.")
+            df[metric + "_standardized"] = scaler.fit_transform(df[[metric]])
+            columns_to_compare = [metric + "_standardized"]
+        return columns_to_compare
+        
     def find_n_most_similar_for_a_file(self, used_files, id, df, metric=None, n=10, clss="stats", ops=None):
         """
         Find n most similar files for the given file which aren't in used_files.
@@ -176,7 +203,7 @@ class ProxiMetor:
         else:
             return self.find_n_most_similar(id, df_copy, metric=metric, n=n, clss=clss)
             
-    async def copy_similar_to_folders(self, base_path, data_path, file_id, similar_files):
+    async def copy_similar_to_folders(self, base_path, data_path, file_id, similar_files, metric = 'all_metrics', metric_value = None):
         """
         Copy files of similar sounds to separate folders.
         Args:
@@ -188,14 +215,20 @@ class ProxiMetor:
             None
         """
         try:
-            if(len(similar_files) == 0):
+            if(len(similar_files) <= 1):
                 return
-            # Create a directory for the sound_id
-            target_folder = os.path.join(base_path, file_id)
+            if metric_value:
+                if isinstance(metric_value, list):
+                    for i in range(len(metric_value)):
+                        metric_value[i] = int(metric_value[i])
+                metric_value = str(metric_value).replace('.', '').replace('[', '').replace(']', '').replace('(', '').replace(')', '').replace(', ', '-')
+            else:
+                metric_value = ""
+            target_folder_base = file_id.split(".")[0]+'_'+metric+'_'+metric_value
+            target_folder = os.path.join(base_path, target_folder_base)
             if not os.path.exists(target_folder):
                 os.makedirs(target_folder)
 
-            # create a directory for the analysis files
             analysis_folder = os.path.join(target_folder, "analysis")
             if not os.path.exists(analysis_folder):
                 os.makedirs(analysis_folder)
@@ -207,27 +240,25 @@ class ProxiMetor:
             for sound in similar_files:
                 if not isinstance(sound, str):
                     break
-                # Assuming each sound has an associated JSON file
                 source_file_path = os.path.join(source_diectory, sound)
                 source_file_without_extension = os.path.splitext(sound)[0]
-                # also copy the analysis files
                 analysis_file = source_file_without_extension+"_analysis.json"
                 analysis_file_path = os.path.join(data_path, analysis_file)
-                # Copy the file to the target directory
                 if os.path.exists(source_file_path):
                     # check if the file already exists in the target directory
                     if not os.path.exists(os.path.join(target_folder, sound)):
-                        print(f'{utils.colors.CYAN} Copying {sound} {utils.colors.ENDC}')
+                        debug.log_info(f'Copying {sound}...')
                         shutil.copy2(source_file_path, target_folder)
                     if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
                         shutil.copy2(analysis_file_path, analysis_folder)
                 else:
-                    print(f'{utils.colors.RED} File {sound} does not exist {utils.colors.ENDC}')
+                    debug.log_error(f'File {sound} does not exist')
+                    break
 
                 await asyncio.sleep(0.005)  # just to mimic some delay
-            print(f'{utils.colors.GREEN} Done copying {len(sound_files)} files to {target_folder} {utils.colors.ENDC}\n')
+            debug.log_done(f'Copied <{len(sound_files)}> files to {target_folder}')
         except Exception as e:
-            print(f'{utils.colors.RED} Error occurred while copying files: {e} {utils.colors.ENDC}')
+            debug.log_error(f'Error occurred while copying files: {e}')
 
     async def process_batch(self, all_files, used_files, df, metric=None, n=5, clss="stats", id=None, ops=None):
         """Process a batch of sounds asynchronously."""
@@ -235,6 +266,8 @@ class ProxiMetor:
             primary_file = id
         else:
             primary_file = all_files.pop()
+            
+
         similar_files = self.find_n_most_similar_for_a_file(used_files=used_files, 
                                                             id=primary_file, 
                                                             df=df, 
@@ -242,25 +275,49 @@ class ProxiMetor:
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        print(f'{utils.colors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} {utils.colors.ENDC}')
+        debug.log_info(f'Found {len(similar_files)} similar sounds for {primary_file} ')
         await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)
         
+    def revert(self):
+        """
+        Revert the changes made by the proxi_metor.
+        """
+        if os.path.exists(self.base_path):
+            shutil.rmtree(self.base_path)
+            debug.log_info(f'Reverted changes made by proxi_metor')
+        else:
+            debug.log_warning(f'No changes to revert')
+        
     def main(self):
-        utils.message_logger.info(f'Checking directory')
+        debug.log_info('Checking directory')
         for sound in os.listdir(self.args.input):
-            if not os.path.exists(os.path.join(self.data_path, sound + "_analysis.json")):
-                utils.error_logger.error(sound + ' has not been analyzed. Please run wavecraft extract first.')
-                sys.exit(1)
+            if utils.check_format(sound):
+                sound = os.path.splitext(sound)[0]
+                if not os.path.exists(os.path.join(self.data_path, sound + "_analysis.json")):
+                    utils.error_logger.error(sound + ' has not been analyzed. Please run wavecraft extract first.')
+                    sys.exit(1)
                 
+        
         data = utils.load_dataset(self.data_path)
-        # Convert to DataFrame
         df = pd.json_normalize(data, sep="_")
         all_files = set(df["id"].tolist())
         
         if self.args.n_max == -1:
             self.args.n_max = len(all_files)
+            
+        if self.args.metric_to_analyze and self.args.metric_range:
+            all_within_range = self.find_all_based_on_metric(self.args.identifier, df, self.args.metric_to_analyze, self.args.metric_range, self.args.class_to_analyse)
+            debug.log_stat(f'Found {len(all_within_range)} files within the {self.args.metric_to_analyze} range of {self.args.metric_range}')
+            asyncio.run(self.copy_similar_to_folders(self.base_path, 
+                                                     self.data_path, 
+                                                     all_within_range[0], 
+                                                     all_within_range,
+                                                     self.args.metric_to_analyze,
+                                                     self.args.metric_range))
+            return
+            
         used_files = set()
         loop = asyncio.get_event_loop()
         
