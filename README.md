@@ -49,8 +49,10 @@ Replace `operation_name` with the name of the operation you want to perform. The
 - `fade`: Apply fades to an audio file.
 - `norm`: Normalise an audio file.
 - `wmetadata`: Write metadata to an audio file.
-- `info`: Get information about an audio file.
-
+- `trim`: Trim an audio file.
+- `split`: Split an audio file into smaller files.
+- `pan`: Pan an audio file.
+- `mono`: Convert an audio file to mono.
 
 For more details on the available operations and options, run:
 

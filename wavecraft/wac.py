@@ -20,7 +20,7 @@ def main(args, revert=None):
         craft.main()
         return
     
-    dsp = args.operation not in ["wmeta", "rmeta", "info"]
+    dsp = args.operation not in ["wmeta", "info"]
     process = args.operation not in ["segment", "extract", "proxim", "onset", "beat", "decomp"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     usage = "wac.py operation [options] arg"
     parser = argparse.ArgumentParser(prog='Wave Craft', epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
                                      formatter_class=formatter_class, usage=usage)
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "mono", "wmeta", "rmeta"], 
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "mono", "wmeta"], 
                     help="Operation to perform. See below for details on each operation.",
                     metavar='operation')
     parser.add_argument("input", type=str,
