@@ -4,16 +4,17 @@ import soundfile as sf
 import utils
 import asyncio
 from wavecraft import utils, BeatDetector, OnsetDetector, Processor
+from wavecraft.debug import Debug as debug
+from wavecraft.debug import colors
 class Segmentor:
     def __init__(self, args):
         self.args = args
         self.processor = Processor(args)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0] + '_segments'
         self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input).split('.')[0])
-        
             
     def render_segments(self, segments):
-        print(f'\n{utils.colors.GREEN}Rendering segments...{utils.colors.ENDC}\n')
+        debug.log_info(f'Rendering segments...')
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
@@ -36,7 +37,7 @@ class Segmentor:
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:
-                print(f'{utils.colors.YELLOW}Skipping segment {i+1} because it\'s too short{utils.colors.ENDC} : {segment_length}s')
+                debug.log_warning(f'Skipping segment {i+1} because it\'s too short: {segment_length}s')
                 continue 
             count += 1
             segment = self.processor.fade_io(segment, self.args.sample_rate, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
@@ -44,39 +45,33 @@ class Segmentor:
             segment = self.processor.normalise_audio(segment, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
             
+            short_path = os.path.basename(segment_path)
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
-            print(f'{utils.colors.CYAN}Saving segment {count} to {segment_path}.{utils.colors.ENDC} {utils.colors.BLUE}length: {segment_length}s{utils.colors.ENDC}\n')
+            debug.log_info(f'Saving segment <{count}> to {short_path}. <length: {segment_length}s>')
             utils.write_metadata(segment_path, meta_data)
 
         utils.export_metadata(meta_data, self.base_segment_path, data_type='seg_metadata')
                 
         
-        print(f'\n[{utils.colors.GREEN}Done{utils.colors.ENDC}]\n')
-
+        debug.log_done(f'Exported {count} segments.')
 
     def save_segments_as_txt(self, onsets):
-        print(f'\n{utils.colors.GREEN}Saving segments as text file...{utils.colors.ENDC}')
+        debug.log_info(f'Saving segments as text file to {self.args.output_directory}...')
         text_file_path = self.base_segment_path + '_segments.txt'
         with open (text_file_path, 'w') as file:
             for i in range(len(onsets) - 1):
                 start_sample = onsets[i]
                 end_sample = onsets[i + 1]
-                # convert the sample indices to time in seconds
-                # round the values to 6 decimal places but make sure there is at least 6 decimal places and add 0s if necessary
                 start_time = round(librosa.samples_to_time(start_sample, sr=self.args.sample_rate), 6)
                 start_time = f'{start_time:.6f}'
                 end_time = round(librosa.samples_to_time(end_sample, sr=self.args.sample_rate), 6)
                 end_time = f'{end_time:.6f}'
-                # add a tab character between the start and end times
                 file.write(f'{start_time}\t{end_time}\n')
-        
-        print(f'\n[{utils.colors.GREEN}Done{utils.colors.ENDC}]\n')
         
     def segment_using_txt(self, audio_path, txt_path, output_folder, file_format):
         
         y, sr = librosa.load(audio_path, sr=None)
 
-        # Read the text file and split the audio based on the segments provided
         with open(txt_path, 'r') as file:
             lines = file.readlines()
 
@@ -103,7 +98,7 @@ class Segmentor:
             detector = BeatDetector(self.args)
             segments = detector.main()
         
-        user_input = input(f'{utils.colors.GREEN}Choose an action:{utils.colors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
+        user_input = input(f'{colors.GREEN}Choose an action:{colors.ENDC}\n1) Render segments\n2) Export segments as text file\n3) Exit\n')
         if user_input.lower() == '3':
             sys.exit()
 

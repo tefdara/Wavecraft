@@ -6,7 +6,7 @@ from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
 import wavecraft.utils as utils
 import sounddevice as sd
-
+from wavecraft.debug import Debug as debug
 
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
@@ -59,28 +59,6 @@ class Processor:
         sf.write(file, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
         utils.write_metadata(file, self.args.meta_data)
     
-    def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
-        
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
-        
-        for i in range(n_components):
-            # Reconstruct the spectrogram of the component
-            component_spectrogram = components[:, i:i+1] @ activations[i:i+1, :]
-            # Combine magnitude with the original phase
-            component_complex = component_spectrogram * phase
-            # Get the audio signal back using inverse STFT
-            y_comp = librosa.istft(component_complex, hop_length=hop_length)
-            
-            # Save the component to an audio file
-            sf.write(os.path.join(render_path, f'component_{i}.wav'), y_comp, sr)
-
-    def render_hpss(self, y_harmonic, y_percussive, render_path, sr=48000):
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
-            
-        sf.write(os.path.join(render_path, 'harmonic.wav'), y_harmonic, sr)
-        sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)
 
 #############################################
 # Fade
@@ -214,7 +192,7 @@ class Processor:
             return yt_stereo, (start_idx, end_idx)
 
         else:
-            print(f'{utils.colors.RED}Invalid number of channels. Expected 1 or 2, got {y.shape[1]}. Skipping trim...{utils.colors.ENDC}')
+           debug.log_error("Invalid number of channels. Expected 1 or 2, got {}".format(y.shape[1]))
     @mode_handler
     def trim_range(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
         # e.g 0.1-0.5 means trim between 0.1 and 0.5 seconds

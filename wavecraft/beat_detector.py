@@ -15,7 +15,6 @@ class BeatDetector:
         self.fmin = args.fmin
         self.fmax = args.fmax
         self.k = args.k
-        # self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input_file)[0] + '_segments'
         
 
     def main(self):
@@ -24,7 +23,6 @@ class BeatDetector:
         tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr, hop_length=self.hop_size, trim=False)
         
         y_padded = np.pad(y, (self.n_fft // 2, self.n_fft // 2), mode='reflect')
-        print(librosa.frames_to_time(beat_frames, sr=sr))
         
         chroma = librosa.feature.chroma_cqt(y=y_padded, sr=sr, n_chroma=self.n_chroma, hop_length=self.hop_size, fmin=self.fmin)
         chroma_sync = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
@@ -60,24 +58,4 @@ class BeatDetector:
         bound_frames = librosa.util.fix_frames(bound_frames, x_min=0, x_max=chroma.shape[1]-1)
         bound_times = librosa.frames_to_time(bound_frames, sr=sr, hop_length=self.hop_size)
         
-        # print(f'{colors.GREEN}Detected {len(bound_frames)} beats.{colors.ENDC}')
-        # print(f'{colors.GREEN}Beat times: {bound_times}{colors.ENDC}')
-        
         return bound_frames
-    
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Detect beats in an audio file.")
-    parser.add_argument("--i", "--input-file", type=str, help="Path to the audio file (wav, aif, aiff).", required=True)
-    parser.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
-    parser.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
-    parser.add_argument("--n-bands", type=int, default=6, help="Number of spectral contrast bands. Default is 6.", required=False)
-    parser.add_argument("--fmin", type=float, default=0, help="Minimum frequency. Default is 0.", required=False)
-    parser.add_argument("--fmax", type=float, default=16000, help="Maximum frequency. Default is 16000.", required=False)
-    parser.add_argument("--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 48000.", required=False)
-    parser.add_argument("--k", type=int, default=5, help="Number of beat clusters. Default is 5.", required=False)
-    args = parser.parse_args()
-
-    detector = BeatDetector(args)
-    boundaries = detector.main()
-
-    print(boundaries) 

@@ -1,12 +1,12 @@
 import sys
 import os
-import argparse
 import librosa
 import asyncio
 import traceback
 import numpy as np
 import sklearn.decomposition
-import wavecraft.utils as utils
+from wavecraft.debug import Debug as debug
+import soundfile as sf
 
 class Decomposer:
     def __init__(self, input_file, method, n_components=4, render=False, render_path=None, output_file_harmonic=None, output_file_percussive=None, sample_rate=48000):
@@ -28,33 +28,33 @@ class Decomposer:
         if self.method == 'decompose':
             comps, acts = await self._decompose(y, n_components=self.n_components, render_path=self.render_path)
             if not self.render:
-                print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
-                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
+                debug.log_info(f'Decomposed the signal into {self.n_components} components.')
+                debug.log_info(f'Render not requested. Exiting...')
                 return
 
-            print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
-            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
-            utils.render_components(comps, acts, sr, self.render_path)
+            debug.log_info(f'Decomposed the signal into {self.n_components} components.')
+            debug.log_info(f'Rendering components to {self.render_path}...')
+            self.render_components(comps, acts, sr, self.render_path)
 
         elif self.method == 'hpss':
             y_harmonic, y_percussive = await self._decompose_hpss(y)
             if not self.render:
-                print(f'{utils.colors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.colors.ENDC}')
-                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
+                debug.log_info(f'Decomposed the signal into harmonic and percussive components.')
+                debug.log_info(f'Render not requested. Exiting...')
                 return
-            print(f'{utils.colors.GREEN}Decomposed the signal into harmonic and percussive components.{utils.colors.ENDC}')
-            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
-            utils.render_hpss(y_harmonic, y_percussive, self.render_path)
+            debug.log_info(f'Decomposed the signal into harmonic and percussive components.')
+            debug.log_info(f'Rendering components to {self.render_path}...')
+            self.render_hpss(y_harmonic, y_percussive, self.render_path)
 
         elif self.method == 'sklearn':
             scomps, sacts = await self._decompose_sk(y, n_components=self.n_components)
             if not self.render:
-                print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
-                print(f'{utils.colors.YELLOW}Render not requested. Exiting...{utils.colors.ENDC}')
+                debug.log_info(f'Decomposed the signal into {self.n_components} components.')
+                debug.log_info(f'Render not requested. Exiting...')
                 return
-            print(f'{utils.colors.GREEN}Decomposed the signal into {self.n_components} components.{utils.colors.ENDC}')
-            print(f'{utils.colors.YELLOW}Rendering components to {self.render_path}...{utils.colors.ENDC}')
-            utils.render_components(scomps, sacts, sr, self.render_path)
+            debug.log_info(f'Decomposed the signal into {self.n_components} components.')
+            debug.log_info(f'Rendering components to {self.render_path}...')
+            self.render_components(scomps, sacts, sr, self.render_path)
 
     async def _decompose(self, y, n_components=4, spectogram=None, n_fft=1024, hop_length=512, render_path=None):
         if spectogram is None:
@@ -75,26 +75,35 @@ class Decomposer:
         T = sklearn.decomposition.MiniBatchDictionaryLearning(n_components=16)
         scomps, sacts = librosa.decompose.decompose(S, transformer=T, sort=True)
         return scomps, sacts
+    
+    def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
+    
+        if not os.path.exists(render_path):
+            os.makedirs(render_path)
+        
+        for i in range(n_components):
+            # Reconstruct the spectrogram of the component
+            component_spectrogram = components[:, i:i+1] @ activations[i:i+1, :]
+            # Combine magnitude with the original phase
+            component_complex = component_spectrogram * phase
+            # Get the audio signal back using inverse STFT
+            y_comp = librosa.istft(component_complex, hop_length=hop_length)
+            
+            # Save the component to an audio file
+            sf.write(os.path.join(render_path, f'component_{i}.wav'), y_comp, sr)
+
+    def render_hpss(self, y_harmonic, y_percussive, render_path, sr=48000):
+        if not os.path.exists(render_path):
+            os.makedirs(render_path)
+            
+        sf.write(os.path.join(render_path, 'harmonic.wav'), y_harmonic, sr)
+        sf.write(os.path.join(render_path, 'percussive.wav'), y_percussive, sr)
 
     def run(self):
         try:
             asyncio.run(self.decompose())
         except Exception as e:
-            print(f'Error: {type(e).__name__}! {e}')
-            traceback.print_exc()
+            debug.log_info(f'Error: {type(e).__name__}! {e}')
+            traceback.debug.log_info_exc()
             sys.exit(1)
             
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Decompose an audio file using different methods')
-    parser.add_argument('-i', '--input_file', type=str, help='path to the input audio file', required=True)
-    parser.add_argument('-m', '--method', type=str, choices=['decompose', 'hpss', 'sklearn'], help='method to use for decomposition', required=True)
-    parser.add_argument('-n', '--n_components', type=int, default=4, help='number of components to use for decomposition')
-    parser.add_argument('-r', '--render', action='store_true', dest='render', help='render the decomposed signal')
-    parser.add_argument('-p', '--render_path', type=str, default=None, help='path to render the decomposed signal. Defaults to the audio file directory')
-    parser.add_argument('-o_h', '--output_file_harmonic', type=str, default=None, help='path to output the harmonic component')
-    parser.add_argument('-o_p', '--output_file_percussive', type=str, default=None, help='path to output the percussive component')
-    parser.add_argument('-s', '--sample_rate', type=int, default=48000, help='sample rate of the input audio file')
-    args = parser.parse_args()
-
-    decomposer = Decomposer(args.input_file, args.method, args.n_components, args.render, args.render_path, args.output_file_harmonic, args.output_file_percussive, args.sample_rate)
-    decomposer.run()

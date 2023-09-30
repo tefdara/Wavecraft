@@ -1,12 +1,8 @@
-import argparse
 import librosa
 import os
 import sys
-import soundfile as sf
 import numpy as np
-import traceback
-import asyncio
-import wavecraft.utils as utils
+from wavecraft.debug import Debug as debug
 
 
 class OnsetDetector:
@@ -16,10 +12,8 @@ class OnsetDetector:
     
     def compute_onsets(self, y, sr, hop_length=512, n_fft=2048, fmin=27.5, fmax=16000., lag=2, max_size=3, env_method='mel'):
         
-        extra = utils.extra_log_string(prepend='Using', append='for onset detection.')
-        
         if env_method == 'mel': 
-            utils.info_logger.info('mel spectrogram', extra=extra)
+            debug.log_info('Onset envelope: <mel spectrogram>')
             mel_spectogram = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=138, fmin=fmin, fmax=fmax)
             S = librosa.power_to_db(mel_spectogram, ref=np.max)
             o_env = librosa.onset.onset_strength(S=S,
@@ -27,7 +21,7 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'rms':
-            utils.info_logger.info('rms', extra=extra)
+            debug.log_info('Onset envelope: <rms>')
             S = np.abs(librosa.stft(y=y))
             rms = librosa.feature.rms(S=S, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=rms[0],
@@ -35,49 +29,49 @@ class OnsetDetector:
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cens':
-            utils.info_logger.info('chroma cens', extra=extra)
+            debug.log_info('Onset envelope: <chroma cens>')
             cens = librosa.feature.chroma_cens(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cens,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'cqt_chr':
-            utils.info_logger.info('chroma cqt', extra=extra)
+            debug.log_info('Onset envelope: <chroma cqt>')
             cqt_chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, n_chroma=12, bins_per_octave=36)
             o_env = librosa.onset.onset_strength(S=cqt_chroma,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'mfcc':
-            utils.info_logger.info('mfcc', extra=extra)
+            debug.log_info('Onset envelope: <mfcc>')
             mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13, n_mels=138, fmin=fmin, fmax=fmax)
             o_env = librosa.onset.onset_strength(S=mfcc,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tmpg':
-            utils.info_logger.info('tempogram', extra=extra)
+            debug.log_info('Onset envelope: <tempogram>')
             tempogram = librosa.feature.tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'ftmpg':
-            utils.info_logger.info('fourier tempogram', extra=extra)
+            debug.log_info('Onset envelope: <fourier tempogram>')
             fourier_tempogram = librosa.feature.fourier_tempogram(y=y, sr=sr, hop_length=hop_length, win_length=384, center=True)
             o_env = librosa.onset.onset_strength(S=fourier_tempogram,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'tonnetz':
-            utils.info_logger.info('tonnetz', extra=extra)
+            debug.log_info('Onset envelope: <tonnetz>')
             tonnetz = librosa.feature.tonnetz(y=y, sr=sr, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=tonnetz,
                                                   sr=sr,
                                                   hop_length=hop_length,
                                                   lag=lag, max_size=max_size)
         elif env_method == 'zcr':
-            print(utils.colors.YELLOW + 'Using zero-crossing rate for onset detection.' + utils.colors.ENDC)
+            debug.log_info('Onset envelope: <zero crossing rate>')
             zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=n_fft, hop_length=hop_length)
             o_env = librosa.onset.onset_strength(S=zcr,
                                                   sr=sr,
@@ -93,7 +87,7 @@ class OnsetDetector:
         if self.args.source_separation is not None:
             # wait for the decomposition to finish
             from decomposer import Decomposer
-            print(f'{utils.colors.YELLOW}Decomposing the signal into harmonic and percussive components...{utils.colors.ENDC}')
+            debug.log_info('Decomposing the signal into harmonic and percussive components...')
             decomposer = Decomposer(self.input, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input), 'components'))
             H, P = await decomposer._decompose_hpss(self.args.y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
             if self.decompose == 'harmonic':
@@ -105,7 +99,7 @@ class OnsetDetector:
         
         onsets = self.compute_onsets(self.args.y, sr=self.args.sample_rate, n_fft=self.args.n_fft, hop_length=self.args.hop_size, fmin=self.args.fmin, fmax=self.args.fmax, env_method=self.args.onset_envelope)
         if len(onsets) == 0 or onsets is None:
-            print(f'{utils.colors.RED}No onsets detected! Try to reduce the onset threshold with -t.{utils.colors.ENDC}')
+            debug.log_info('No onsets detected! Try to reduce the onset threshold with -t')
             sys.exit(1)
             return
         ot = librosa.frames_to_time(onsets, sr=self.args.sample_rate, hop_length=self.args.hop_size)
@@ -115,59 +109,27 @@ class OnsetDetector:
         
         segs = onset_times + [self.args.duration]
         segment_lengths = np.around(np.diff(segs),5).tolist()
+        dur = round(self.args.duration, 5)
         
-        utils.statlogger.info(f'Detected {len(onsets)} onsets:')
-        length_val = utils.extra_log_value(round(self.args.duration, 5), 'seconds')
-        utils.value_logger.info(f'File length: ', extra=length_val)
-        frame_val = utils.extra_log_value(self.args.num_frames,'frames')
-        utils.value_logger.info(f'Frame count: ', extra=frame_val)
+        print()
+        debug.log_stat(f'Detected {len(onsets)} onsets:\n')
+        debug.log_value(f'File length (sec): {dur}')
+        debug.log_value(f'File length (min): {round(dur/60, 2)}')
+        debug.log_value(f'Frame count: {self.args.num_frames}')
 
-        # collapse the list of onsets to only show the first 3 and last 3 onsets if there are too many
         if len(onsets) > 15:
             onsets_c = [onsets[0], onsets[1], onsets[2], onsets[-3], onsets[-2], onsets[-1]]
             onset_times_c = [onset_times[0], onset_times[1], onset_times[2], onset_times[-3], onset_times[-2], onset_times[-1]]
             segment_lengths_c = [segment_lengths[0], segment_lengths[1], segment_lengths[2], segment_lengths[-3], segment_lengths[-2], segment_lengths[-1]]
-            # round the values to 3 decimal places
             onsets_c = [round(x, 3) for x in onsets_c]
             onset_times_c = [round(x, 3) for x in onset_times_c]
             segment_lengths_c = [round(x, 3) for x in segment_lengths_c]
             onsets_c.insert(3, '...')
             onset_times_c.insert(3, '...')
             segment_lengths_c.insert(3, '...')
-        # if the number of onsets is less than 12, just show all of them
-        # else show the first 3 and last 3 onsets with ... in between
-        frames_val = utils.extra_log_value(onsets_c if len(onsets) > 12 else onsets, 'frames')
-        times_val = utils.extra_log_value(onset_times_c if len(onsets) > 12 else onset_times, 'seconds')
-        lengths_val = utils.extra_log_value(segment_lengths_c if len(onsets) > 12 else segment_lengths, 'seconds')
-        utils.value_logger.info(f'Onset Frames: ', extra=frames_val)
-        utils.value_logger.info(f'Onset times: ', extra=times_val)
-        utils.value_logger.info(f'Segment lengths: ', extra=lengths_val)
-        print('')
+
+        debug.log_value(f'Onset Frames: {onsets_c if len(onsets) > 12 else onsets}')
+        debug.log_value(f'Onset Times: {onset_times_c if len(onsets) > 12 else onset_times}')
+        debug.log_value(f'Segment Lengths: {segment_lengths_c if len(onsets) > 12 else segment_lengths}\n')
+        
         return onsets
-
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Segment an audio file based on its onsets and apply fade out to each segment')
-    parser.add_argument("-i", "--input-file", type=str, help="Path to the audio file (wav, aif, aiff).", required=True)
-    parser.add_argument('-o', '--output_directory', type=str, default=None, help='path to the output directory')
-    parser.add_argument("-t", "--onset-threshold", type=float, default=0.1, help="Onset detection threshold. Default is 0.1.", required=False)
-    parser.add_argument('-c', '--curve-type', type=str, default='exp', choices=['exp', 'log', 'linear', 's_curve', 'hann'], help='type of the fade out curve')
-    parser.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components, before computing segments.", required=False)
-    parser.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False)
-    parser.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False)
-    parser.add_argument('-v', '--verbose', action='store_true', help='print verbose messages')
-
-    args = parser.parse_args()
-
-    if args.verbose:
-        print(f'{utils.colors.YELLOW}Verbose mode enabled.{utils.colors.ENDC}')
-
-    onset_detector = OnsetDetector(args)
-
-    try:
-        asyncio.run(onset_detector.main())
-    except Exception as e:
-        utils.error_logger.error(e)
-        traceback.print_exc()
-        sys.exit(1)

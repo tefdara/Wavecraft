@@ -4,6 +4,7 @@ import os
 import json
 import wavecraft.utils as utils
 from sklearn.decomposition import PCA
+from wavecraft.debug import Debug as debug
 
 class Extractor:
     def __init__(self, args, mode='extract'):
@@ -140,7 +141,7 @@ class Extractor:
             results = utils.flatten_dict(results) if self.args.flatten_dictionary else results
             
         except Exception as e:
-            print(utils.colors.RED+"Error processing", self.file_name, ":", str(e)+utils.colors.ENDC)
+            debug.log_error(f'Error processing {self.file_name}: {str(e)}')
             errors[self.file_name] = str(e)
             return errors
         

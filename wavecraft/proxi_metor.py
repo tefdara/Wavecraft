@@ -138,7 +138,6 @@ class ProxiMetor:
                 distances.append((row["id"], dist))
         
         distances.sort(key=lambda x: x[1])
-        print(distances)
         return [item[0] for item in distances[:n]]
 
 
@@ -174,20 +173,15 @@ class ProxiMetor:
         # ).tolist()
         # distances.sort(key=lambda x: x[1])
         return df[(df[clss + "_" + metric] >= metric_range[0]) & (df[clss + "_" + metric] <= metric_range[1])]["id"].tolist() 
-        
-      
-        
-        print(metric_range)
-        return [item[0] for item in distances if item[1] >= metric_range[0] and item[1] <= metric_range[1]]
     
     def get_metric_columns(self, df, metric, scaler, clss="stats"):
         if metric.endswith('_'):  # Wildcard matching
-            print(f'{utils.colors.MAGENTA}Using wildcard matching for {metric} ')
+            debug.log_info(f'Using wildcard matching for {metric}')
             prefix = clss + "_" + metric[:-1] # Remove the wildcard
             columns_to_compare = [col for col in df.columns if col.startswith(prefix)]
             df[columns_to_compare] = scaler.fit_transform(df[columns_to_compare])
         else:
-            print(f'{utils.colors.MAGENTA}Using exact matching for {metric} ')
+            debug.log_info(f'Using exact matching for {metric}')
             metric = clss + "_" + metric
             if metric not in df.columns:
                 raise ValueError(f"The metric {metric} doesn't exist in the data.")
@@ -209,7 +203,7 @@ class ProxiMetor:
         else:
             return self.find_n_most_similar(id, df_copy, metric=metric, n=n, clss=clss)
             
-    async def copy_similar_to_folders(self, base_path, data_path, file_id, similar_files):
+    async def copy_similar_to_folders(self, base_path, data_path, file_id, similar_files, metric = 'all_metrics', metric_value = None):
         """
         Copy files of similar sounds to separate folders.
         Args:
@@ -223,12 +217,18 @@ class ProxiMetor:
         try:
             if(len(similar_files) <= 1):
                 return
-            # Create a directory for the sound_id
-            target_folder = os.path.join(base_path, file_id.split(".")[0])
+            if metric_value:
+                if isinstance(metric_value, list):
+                    for i in range(len(metric_value)):
+                        metric_value[i] = int(metric_value[i])
+                metric_value = str(metric_value).replace('.', '').replace('[', '').replace(']', '').replace('(', '').replace(')', '').replace(', ', '-')
+            else:
+                metric_value = ""
+            target_folder_base = file_id.split(".")[0]+'_'+metric+'_'+metric_value
+            target_folder = os.path.join(base_path, target_folder_base)
             if not os.path.exists(target_folder):
                 os.makedirs(target_folder)
 
-            # create a directory for the analysis files
             analysis_folder = os.path.join(target_folder, "analysis")
             if not os.path.exists(analysis_folder):
                 os.makedirs(analysis_folder)
@@ -240,25 +240,23 @@ class ProxiMetor:
             for sound in similar_files:
                 if not isinstance(sound, str):
                     break
-                # Assuming each sound has an associated JSON file
                 source_file_path = os.path.join(source_diectory, sound)
                 source_file_without_extension = os.path.splitext(sound)[0]
-                # also copy the analysis files
                 analysis_file = source_file_without_extension+"_analysis.json"
                 analysis_file_path = os.path.join(data_path, analysis_file)
-                # Copy the file to the target directory
                 if os.path.exists(source_file_path):
                     # check if the file already exists in the target directory
                     if not os.path.exists(os.path.join(target_folder, sound)):
-                        print(f'{utils.colors.CYAN} Copying {sound} ')
+                        debug.log_info(f'Copying {sound}...')
                         shutil.copy2(source_file_path, target_folder)
                     if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
                         shutil.copy2(analysis_file_path, analysis_folder)
                 else:
                     debug.log_error(f'File {sound} does not exist')
+                    break
 
                 await asyncio.sleep(0.005)  # just to mimic some delay
-            debug.log_done(f'Copied {len(sound_files)} files to {target_folder}')
+            debug.log_done(f'Copied <{len(sound_files)}> files to {target_folder}')
         except Exception as e:
             debug.log_error(f'Error occurred while copying files: {e}')
 
@@ -277,10 +275,20 @@ class ProxiMetor:
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        print(f'{utils.colors.GREEN}Found {len(similar_files)} similar sounds for {primary_file} ')
+        debug.log_info(f'Found {len(similar_files)} similar sounds for {primary_file} ')
         await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)
+        
+    def revert(self):
+        """
+        Revert the changes made by the proxi_metor.
+        """
+        if os.path.exists(self.base_path):
+            shutil.rmtree(self.base_path)
+            debug.log_info(f'Reverted changes made by proxi_metor')
+        else:
+            debug.log_warning(f'No changes to revert')
         
     def main(self):
         debug.log_info('Checking directory')
@@ -302,7 +310,12 @@ class ProxiMetor:
         if self.args.metric_to_analyze and self.args.metric_range:
             all_within_range = self.find_all_based_on_metric(self.args.identifier, df, self.args.metric_to_analyze, self.args.metric_range, self.args.class_to_analyse)
             debug.log_stat(f'Found {len(all_within_range)} files within the {self.args.metric_to_analyze} range of {self.args.metric_range}')
-            asyncio.run(self.copy_similar_to_folders(self.base_path, self.data_path, all_within_range[0], all_within_range))
+            asyncio.run(self.copy_similar_to_folders(self.base_path, 
+                                                     self.data_path, 
+                                                     all_within_range[0], 
+                                                     all_within_range,
+                                                     self.args.metric_to_analyze,
+                                                     self.args.metric_range))
             return
             
         used_files = set()

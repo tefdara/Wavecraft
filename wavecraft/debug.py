@@ -39,7 +39,7 @@ class Logger:
             handler.setLevel(logging.WARNING)
             formatter = logging.Formatter('%(level)s %(message)s')
         elif type == 'value':
-            formatter = logging.Formatter('%(message)-18s %(value)s (%(unit)s)')
+            formatter = logging.Formatter('     %(message)-30s %(value)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
@@ -80,11 +80,13 @@ class Logger:
             message = message.replace('>', f'{colors.ENDC}')
             level = type.replace('ERROR', f'[ {colors.RED}ERROR{colors.ENDC} ]')
         elif type == 'VALUE':
-            message = colors.CYAN+message+colors.ENDC
-            level = ''
+            # message = colors.CYAN+message+colors.ENDC
+            message = ''.join([f'{colors.GREEN}{x}{colors.ENDC}' if x.isdigit() else x for x in message])
+            message = message.replace('<', f'{colors.ENDC}{colors.YELLOW}')
+            message = message.replace('>', f'{colors.ENDC}')
+            level=''
         elif type == 'DONE':
-            message = message.replace('<', f'{colors.GREEN}')
-            message = ''.join([f'{colors.CYAN}{x}{colors.ENDC}' if x.isdigit() else x for x in message])
+            message = message.replace('<', f'{colors.CYAN}')
             level = type.replace('DONE', f'[ {colors.GREEN}DONE{colors.ENDC} ]')
             
         message = message.replace('>', f'{colors.ENDC}')
@@ -120,10 +122,14 @@ class Debug:
         log.info(message, extra=level)
     
     @staticmethod
-    def log_value(value, unit):
-        level, message = logger.parse_message(message, type='value')
+    def log_value(message):
+        _, message = logger.parse_message(message, type='value')
         log = logger.get_logger('value')
-        log.info(message, extra=level)
+        value = message.split(':')[1]
+        message = message.split(':')[0]+':'
+        message = colors.CYAN+message+colors.ENDC
+        extra = {'value': value}
+        log.info(message, extra=extra)
         
     @staticmethod
     def log_done(message):

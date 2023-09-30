@@ -7,12 +7,12 @@ from wavecraft import *
 from wavecraft.debug import Debug as debug
 
 
-def main(args):
+def main(args, revert=None):
     t=0
-    while t <= 1:
+    while t <= 1.01:
         utils.progress_bar(t, 1, message=args.operation)
         t+=0.01
-        time.sleep(0.007)
+        time.sleep(0.005)
     
     if args.operation == "proxim":
         debug.log_info('Calculating <proximity metric>')
@@ -29,7 +29,7 @@ def main(args):
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
     
-    debug.log_info('Loading files...')
+    debug.log_info('Loading...')
     files = load_files(args.input)
     
     if process:
@@ -124,13 +124,13 @@ def main(args):
 def load_files(input):
     files = []
     if input == None or input == '':
-        print(f'{utils.colors.RED}No input provided!{utils.colors.ENDC}')
+        debug.log_error('No input file or directory provided!')
         sys.exit()
     if input == '.':
         input = os.getcwd()
     # check if dir is home dir
     if input == os.path.expanduser('~'):
-        print(f'\n{utils.colors.RED}You have selcted the home directory! Are you sure you want to go ahead?{utils.colors.ENDC}')
+        debug.log_warning('You are about to process your home directory. Are you sure you want to continue?')
         user_input = input(f'\n1) Yes\n2) No\n')
         if user_input.lower() == '2':
             sys.exit(1)           
@@ -144,7 +144,7 @@ def load_files(input):
         if utils.check_format(input):
             files.append(input)
     if len(files) == 0:
-        print(f'{utils.colors.RED}Could not find any valid files!{utils.colors.ENDC}')
+        debug.log_error('No valid files found!')
         sys.exit()
     return files
 
@@ -266,9 +266,13 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    revert = None        
     if not os.path.isdir(args.input) and not os.path.isfile(args.input):
-        debug.log_error(f'Could not find input: {args.input}! Make sure the input is a valid  file or directory.')
-        sys.exit()
-    main(args)
+        if(args.input == 'revert'):
+            revert = True
+        else:
+            debug.log_error(f'Could not find input: {args.input}! Make sure the input is a valid  file or directory.')
+            sys.exit()
+    main(args, revert)
     
     
