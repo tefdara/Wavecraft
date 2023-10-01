@@ -4,6 +4,10 @@ import subprocess, tempfile, json
 import threading
 from wavecraft.debug import Debug as debug
 
+
+#######################
+# Metadata
+#######################
 def concat_metadata(meta_data, craft_data):
         # print (meta_data)
     if meta_data is None:
@@ -121,27 +125,32 @@ def export_metadata(data, output_path, data_type='metadata'):
     with open(output_file, 'w') as file:
         json.dump(data_dict, file, indent=4)
         
-def load_json (input):
-    if os.path.isfile(input):
-        try:
-            with open (input, 'r') as file:
-                data = json.load(file)
-                return data
-        except Exception as e:
-            debug.log_error(f'Error loading JSON file {input}. {str(e)}')
-            return None
-    elif os.path.isdir(input):
-        data = {}
-        for file in os.listdir(input):
-            if file.endswith('.json'):
-                try:
-                    with open (os.path.join(input, file), 'r') as f:
-                        data[file] = json.load(f)
-                except Exception as e:
-                    debug.log_error(f'Error loading JSON file {file}. {str(e)}')
-                    return None
-        return data
-    
+#######################
+# Maths
+#######################    
+def compute_curve(x, curve_type='exp'):
+    """Compute a curve of length x.
+    Args:
+        x: The length of the curve in samples.
+        curve_type: The type of curve to compute.
+    Returns:
+        The curve.
+    """
+    if curve_type == 'exp':
+        fade_curve = np.linspace(0.0, 1.0, x) ** 2
+    elif curve_type == 'log':
+        fade_curve = np.sqrt(np.linspace(0.0, 1.0, x))
+    elif curve_type == 'linear':
+        fade_curve = np.linspace(0.0, 1.0, x)
+    elif curve_type == 's_curve':
+        t = np.linspace(0.0, np.pi / 2, x)
+        fade_curve = np.sin(t)
+    elif curve_type == 'hann':
+        fade_curve = np.hanning(x) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
+    elif curve_type == 'hamming':
+        fade_curve = np.hamming(x)
+        
+    return fade_curve
 
 def sci_note_to_float(array, precision=2):
         
@@ -161,14 +170,32 @@ def sci_note_to_float(array, precision=2):
     else:
         debug.log_error(f'Invalid input. Expected a numpy array or a float, got {type(array)}')
         return None
-        
-def check_format(file):
-    return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3', 'json']
-
-
+    
 def nearest_power_of_2(x):
     """Find the nearest power of 2 less than or equal to x."""
     return 2**np.floor(np.log2(x))
+
+def deep_float_conversion(data):
+    """
+    Recursively convert string numbers to floats in a nested dict.
+    Args:
+        data: The data to convert.
+    Returns:
+        The converted float.
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = deep_float_conversion(value)
+    elif isinstance(data, list):
+        for index, value in enumerate(data):
+            data[index] = deep_float_conversion(value)
+    elif isinstance(data, str):
+        try:
+            # Check if the string can be converted to a float.
+            return float(data)
+        except ValueError:
+            return data
+    return data
 
 def adjust_anal_res(args):
     """Adjust the analysis resolution based on the duration of the audio.
@@ -194,6 +221,36 @@ def adjust_anal_res(args):
     n_mels = int(128 * scale_factor)
     return n_fft, hop_size, win_length, n_bins, n_mels
 
+
+#######################
+# File management
+#######################   
+def load_json (input):
+    if os.path.isfile(input):
+        try:
+            with open (input, 'r') as file:
+                data = json.load(file)
+                return data
+        except Exception as e:
+            debug.log_error(f'Error loading JSON file {input}. {str(e)}')
+            return None
+    elif os.path.isdir(input):
+        data = {}
+        for file in os.listdir(input):
+            if file.endswith('.json'):
+                try:
+                    with open (os.path.join(input, file), 'r') as f:
+                        data[file] = json.load(f)
+                except Exception as e:
+                    debug.log_error(f'Error loading JSON file {file}. {str(e)}')
+                    return None
+        return data
+    
+        
+def check_format(file):
+    return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3', 'json']
+
+
 def flatten_dict(d):
     items = {}
     for k, v in d.items():
@@ -210,28 +267,6 @@ def flatten_dict(d):
     # make sure stats are represented in order of index
     items = {k: v for k, v in sorted(items.items(), key=lambda item: item[0])}        
     return items
-
-def deep_float_conversion(data):
-    """
-    Recursively convert string numbers to floats in a nested dict.
-    Args:
-        data: The data to convert.
-    Returns:
-        The converted float.
-    """
-    if isinstance(data, dict):
-        for key, value in data.items():
-            data[key] = deep_float_conversion(value)
-    elif isinstance(data, list):
-        for index, value in enumerate(data):
-            data[index] = deep_float_conversion(value)
-    elif isinstance(data, str):
-        try:
-            # Check if the string can be converted to a float.
-            return float(data)
-        except ValueError:
-            return data
-    return data
 
 def load_dataset(data_path):
     """
@@ -260,39 +295,22 @@ def load_dataset(data_path):
        raise ValueError("The data path must be a directory.")
     return data_dicts
 
-#######################
-# File management
-#######################
 def get_analysis_path():
-    output_cache_dir = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
-    if not os.path.exists(output_cache_dir):
-            os.makedirs(output_cache_dir)
-    return output_cache_dir
+    path = os.path.join(os.path.dirname(__file__), '..', 'cache', 'analysis')
+    if not os.path.exists(path):
+            os.makedirs(path)
+    return path
 
-def compute_curve(x, curve_type='exp'):
-    """Compute a curve of length x.
-    Args:
-        x: The length of the curve in samples.
-        curve_type: The type of curve to compute.
-    Returns:
-        The curve.
-    """
-    if curve_type == 'exp':
-        fade_curve = np.linspace(0.0, 1.0, x) ** 2
-    elif curve_type == 'log':
-        fade_curve = np.sqrt(np.linspace(0.0, 1.0, x))
-    elif curve_type == 'linear':
-        fade_curve = np.linspace(0.0, 1.0, x)
-    elif curve_type == 's_curve':
-        t = np.linspace(0.0, np.pi / 2, x)
-        fade_curve = np.sin(t)
-    elif curve_type == 'hann':
-        fade_curve = np.hanning(x) / 2 + 0.5  # or fade_curve = 0.5 * (1 - np.cos(np.pi * np.linspace(0.0, 1.0, fade_duration_samples)))
-    elif curve_type == 'hamming':
-        fade_curve = np.hamming(x)
-        
-    return fade_curve
+def get_output_path():
+    path = os.path.join(os.path.dirname(__file__), '..', 'cache', 'output')
+    if not os.path.exists(path):
+            os.makedirs(path)
+    return path
 
+
+#######################
+# Input
+#######################
 def key_pressed(key):
     try:
         import msvcrt
@@ -311,7 +329,7 @@ def key_pressed(key):
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 #######################
-# progress
+# UI
 #######################
 def progress_bar(current, total, message='Progress', barLength = 50):
     percent = float(current) * 100 / total
@@ -337,9 +355,6 @@ def on_process_end():
     stop_flag.set()
     processing_thread.join()
     
-#######################
-# ASCII Art
-#######################
 def print_ascii_art():
     print('''
     # +-------------------------------------+
