@@ -2,7 +2,7 @@ import os, time
 import numpy as np 
 import subprocess, tempfile, json
 import threading
-from wavecraft.debug import Debug as debug
+from debug import Debug as debug
 
 
 #######################

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os, sys, argparse, time
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.dirname(__file__))
 import librosa, soundfile as sf
 from wavecraft import * 
 from wavecraft.debug import Debug as debug
