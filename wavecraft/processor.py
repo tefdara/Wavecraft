@@ -9,6 +9,7 @@ from wavecraft.debug import colors
 import sounddevice as sd
 from wavecraft.debug import Debug as debug
 
+
 def mode_handler(func):
     """Decorator to handle processing or rendering based on mode."""
     def wrapper(self, *args, **kwargs):
