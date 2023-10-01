@@ -5,6 +5,7 @@ import os, sys
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
 import wavecraft.utils as utils
+from wavecraft.debug import colors
 import sounddevice as sd
 from wavecraft.debug import Debug as debug
 
@@ -15,32 +16,32 @@ def mode_handler(func):
         # If in render mode, preview the sound first
         if self.mode == "render":
             if self.batch:
-                utils.warning_logger.warn("Batch processing. Skipping preview...")
+                debug.log_warning("Batch processing. Skipping preview...")
                 self._render(result, args.output)
                 return
             else:
                 prev_result = np.copy(result)
-                utils.message_logger.info("Playing preview")
-                # utils.message_logger.info("Press 's' to skip preview")
+                debug.log_info("Playing preview")
+                # debug.log_info("Press 's' to skip preview")
                 sd.play(prev_result, samplerate=self.args.sample_rate)
                 sd.wait()
                 
                 while True:
-                    confirmation = input(f"\n{utils.colors.GREEN}Do you want to render the results?{utils.colors.ENDC}\n\n1) Render\n2) Replay preview\n3) Exit\n")
+                    confirmation = input(f"\n{colors.GREEN}Do you want to render the results?{colors.ENDC}\n\n1) Render\n2) Replay preview\n3) Exit\n")
                     if confirmation.lower() == '1':
-                        utils.message_logger.info("Rendering")
+                        debug.log_info("Rendering")
                         self._render(result)
-                        utils.message_logger.info("Done!")
+                        debug.log_info("Done!")
                         break
                     elif confirmation.lower() == '2':
-                        utils.message_logger.info("Replaying")
+                        debug.log_info("Replaying")
                         sd.play(prev_result, samplerate=self.args.sample_rate)
                         sd.wait()
                     elif confirmation.lower() == '3':
-                        utils.warning_logger.warn("Aborting render")
-                        break
+                        debug.log_warning("Aborting render")
+                        sys.exit(1)
                     else:
-                        utils.error_logger.error("\nInvalid input! Choose one of the options below.")
+                        debug.log_error("\nInvalid input! Choose one of the options below.")
                         continue
                 return
         else:
@@ -202,7 +203,7 @@ class Processor:
         start = int(float(range[0])*sr) if range[0] != '' else 0
         end = int(float(range[1])*sr) if range[1] != '' else len(y)
         if end < start or start < 0 or end > len(y):
-            utils.error_logger.error(f'Invalid range! Skipping trim')
+            debug.log_error(f'Invalid range! Skipping trim')
             sys.exit(1)
             
         y_trimmed = np.concatenate((y[0:start], y[end:]))
@@ -315,7 +316,7 @@ class Processor:
     def split(self, y, sr, split_points, name='split'):
         split_points = [int(x*sr) for x in split_points]
         if len(split_points) == 1:
-            utils.message_logger.info('Rendering split files')
+            debug.log_info('Rendering split files')
             y_1 = y[:split_points[0]]
             self._render(y_1, name+'_1.wav')
             y_2 = y[split_points[0]:]
@@ -330,7 +331,7 @@ class Processor:
                 if i == len(split_points)-1:
                     y_2 = y[split_points[i]:len(y)]
                 
-                utils.message_logger.info('Rendering split files')
+                debug.log_info('Rendering split files')
                 self._render(y_1, name+f'_{i}.wav')
                 self._render(y_2, name+f'_{i+1}.wav')
             
