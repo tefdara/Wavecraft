@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
-import wavecraft.utils as utils
-from wavecraft.debug import Debug as debug
+from . import utils
+from .debug import Debug as debug
 
 class ProxiMetor:
     def __init__(self, args):

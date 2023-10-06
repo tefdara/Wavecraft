@@ -2,7 +2,7 @@ import librosa
 import os
 import sys
 import numpy as np
-from wavecraft.debug import Debug as debug
+from .debug import Debug as debug
 
 
 class OnsetDetector:

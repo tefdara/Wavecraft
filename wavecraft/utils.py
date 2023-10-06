@@ -2,7 +2,7 @@ import os, time
 import numpy as np 
 import subprocess, tempfile, json
 import threading
-from debug import Debug as debug
+from .debug import Debug as debug
 
 
 #######################
@@ -339,6 +339,13 @@ def progress_bar(current, total, message='Progress', barLength = 50):
     print(f'{message}: [{arrow}{spaces}] {percent:.2f} %', end='\r')
     if current == total:
         print('\n')
+        
+def progress(operation):
+    t=0
+    while t <= 1.01:
+        progress_bar(t, 1, message=operation)
+        t+=0.01
+        time.sleep(0.004)
 
 def processing_loop(stop_flag):
     while not stop_flag.is_set():

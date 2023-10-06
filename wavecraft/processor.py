@@ -4,10 +4,10 @@ import numpy as np
 import os, sys
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
-import wavecraft.utils as utils
-from wavecraft.debug import colors
 import sounddevice as sd
-from wavecraft.debug import Debug as debug
+from .debug import Debug as debug
+from .debug import colors
+from .utils import write_metadata, compute_curve
 
 
 def mode_handler(func):
@@ -59,7 +59,7 @@ class Processor:
     
     def _render(self, y, file):
         sf.write(file, y, self.args.sample_rate, format='WAV', subtype='PCM_24')
-        utils.write_metadata(file, self.args.meta_data)
+        write_metadata(file, self.args.meta_data)
     
 
 #############################################
@@ -86,11 +86,11 @@ class Processor:
         # convert fade duration to samples
         fade_in_samples = int(fade_in * sr / 1000)
         fade_in_samples = int(min(fade_in_samples, max_len_percent))+1    
-        fade_in_curve = utils.compute_curve(fade_in_samples, curve_type)
+        fade_in_curve = compute_curve(fade_in_samples, curve_type)
     
         fade_out_samples = int(fade_out * sr / 1000)
         fade_out_samples = int(min(fade_out_samples, max_len_percent))+1
-        fade_out_curve = utils.compute_curve(fade_out_samples, curve_type)
+        fade_out_curve = compute_curve(fade_out_samples, curve_type)
        
         if len(y.shape) == 1:
             y[:fade_in_samples] *= fade_in_curve

@@ -1,8 +1,5 @@
 import librosa
 import numpy as np
-import argparse
-import scipy
-import os
 
 class BeatDetector:
     def __init__(self, args):

@@ -5,7 +5,7 @@ import asyncio
 import traceback
 import numpy as np
 import sklearn.decomposition
-from wavecraft.debug import Debug as debug
+from .debug import Debug as debug
 import soundfile as sf
 
 class Decomposer:

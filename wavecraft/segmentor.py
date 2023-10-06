@@ -1,14 +1,14 @@
-import os, sys
-import librosa
+import os, sys, librosa
 import soundfile as sf
-import utils
+from . import utils
 import asyncio
-from wavecraft import utils, BeatDetector, OnsetDetector, Processor
 from wavecraft.debug import Debug as debug
 from wavecraft.debug import colors
+
 class Segmentor:
     def __init__(self, args):
         self.args = args
+        from .processor import Processor
         self.processor = Processor(args)
         self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0] + '_segments'
         self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input).split('.')[0])
@@ -92,9 +92,11 @@ class Segmentor:
                 
     def main(self):
         if self.args.segmentation_method == 'onset':
+            from.onset_detector import OnsetDetector
             detector = OnsetDetector(self.args)
             segments = asyncio.run(detector.main())
         elif self.args.segmentation_method == 'beat':
+            from .beat_detector import BeatDetector
             detector = BeatDetector(self.args)
             segments = detector.main()
         

@@ -2,9 +2,8 @@ import librosa
 import numpy as np
 import os
 import json
-import wavecraft.utils as utils
 from sklearn.decomposition import PCA
-from wavecraft.debug import Debug as debug
+from .debug import Debug as debug
 
 class Extractor:
     def __init__(self, args, mode='extract'):
@@ -14,14 +13,15 @@ class Extractor:
         output_dir = self.args.output_directory
         
         if not output_dir:
-            file_dir = os.path.dirname(self.file_name)
+            file_dir = os.path.dirname(self.args.input)
             output_dir = os.path.join(file_dir, 'analysis')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
+        print(file_dir)
         self.output_file = os.path.join(output_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
-        output_cache_dir = utils.get_analysis_path()
-        self.output_cache = os.path.join(output_cache_dir, os.path.splitext(self.file_name)[0]+'_analysis.json')
+        from .utils import get_analysis_path
+        output_cache_dir = get_analysis_path()
+        self.output_cache = os.path.join(os.path.abspath(output_cache_dir), os.path.splitext(self.file_name)[0]+'_analysis.json')
         
     def extract(self):
                    
@@ -72,7 +72,7 @@ class Extractor:
             
             n_mffc = 13
             if mfcc.shape[0] < n_mffc:
-                utils.warning_logger.warning("Padding mfcc with zeros to match the number of rows of the PCA matrix")
+                debug.log_warning("Padding mfcc with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_mffc - mfcc.shape[0]
                 mfcc = np.pad(mfcc, ((0, pad_amount), (0, 0)), mode='constant')
             pca_mfcc = PCA(n_components=n_mffc)
@@ -82,7 +82,7 @@ class Extractor:
             fourier_tempogram = np.real(fourier_tempogram)
             n_ftempo = 20
             if fourier_tempogram.shape[0] < n_ftempo:
-                utils.warning_logger.warning("Padding fourier tempogram with zeros to match the number of rows of the PCA matrix")
+                debug.log_warning("Padding fourier tempogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = n_ftempo - fourier_tempogram.shape[0]
                 fourier_tempogram = np.pad(fourier_tempogram, ((0, pad_amount), (0, 0)), mode='constant')
             pca_ftempo = PCA(n_components=n_ftempo)
@@ -90,7 +90,7 @@ class Extractor:
             
             rn_mels = 12
             if M.shape[0] < rn_mels:
-                utils.warning_logger.warning("Padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
+                debug.log_warning("Padding mel spectrogram with zeros to match the number of rows of the PCA matrix")
                 pad_amount = rn_mels - M.shape[0]
                 M = np.pad(M, ((0, pad_amount), (0, 0)), mode='constant')
             pca_M = PCA(n_components=rn_mels)
@@ -138,7 +138,9 @@ class Extractor:
                 if type(results[key]) is np.ndarray:
                     results[key] = results[key].tolist()
             
-            results = utils.flatten_dict(results) if self.args.flatten_dictionary else results
+            if self.args.flatten_dictionary:
+                from .utils import flatten_dict
+                results = flatten_dict(results) 
             
         except Exception as e:
             debug.log_error(f'Error processing {self.file_name}: {str(e)}')
@@ -152,6 +154,7 @@ class Extractor:
             self.save(results, self.output_cache)
                 
     def save(self, results, output_file):
+        # debug.log_info(f'Saving results to <{output_file}>...')
         data = {'id': self.file_name, 'path': self.args.input, 'stats': results}
         if os.path.isfile(output_file):
             with open(output_file, 'r') as outfile:
@@ -159,7 +162,6 @@ class Extractor:
                 # overwrite the stats with the new ones
                 for key in data['stats']:
                     if key in old_data['stats'] and old_data['stats'][key] == data['stats'][key]:
-                        # print(utils.bcolors.YELLOW + "Warning: stats for " + key + " have not been updated as they are the same." + utils.bcolors.ENDC)
                         continue
                     old_data.setdefault('stats', {})[key] = data['stats'][key]
             with open(output_file, 'w') as outfile:
