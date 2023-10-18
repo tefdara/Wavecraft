@@ -1,10 +1,8 @@
 # Wave Craft
 
-Wave Craft is a Python-based tool for audio manipulation, segmentation and decomposition. It's a unification of a lot of small bash and python tools I made to make my life easier. It is built on top of the [librosa](https://librosa.org) library, which provides a wide range of audio processing and analysis tools. 
+Wave Craft is a Python-based tool for audio manipulation, segmentation and batch processing. It started as a unification of a lot of small bash and python tools I have made over time to make my life easier. However, it is slowly growing into a more comprehensive tool for audio processing. Wave Craft has a command-line interface for performing various operations on audio files. In its simplest form, it requires an operation name and an input file. The input can be a directory of files for batch processing. It can also take a text file as input for some operations. See the [Usage](#usage) section for more details.
 
-Wave Craft has a command-line interface for performing various operations on audio files, including segmenting them into smaller samples based on onsets or other methods, decomposing them using various methods, applying filters, writing metadata, normalising, triming, extracting features etc. 
-
-This is a new project of mine and is a work in progress. I'll be updating and expanding it in the coming months, years and decades.
+Wave Craft is a work in progress. I'll be updating and expanding it in the coming months, years and... decades? I don't know. I'll be adding more operations and features if time permits. If you have any suggestions or feedback, please let me know.
 
 
 
@@ -20,8 +18,9 @@ This is a new project of mine and is a work in progress. I'll be updating and ex
 - `scikit-learn`
 - `pandas`
 - `pyloudnorm`
+- `sounddevice`
 
-Look at the [requirements.txt](requirements.txt) and below for details on how to use the bash script to install the dependencies.
+Look at the [requirements.txt](requirements.txt) and [dependency installer](#python-dependency-installation-script) for details on how to use the bash script to install the dependencies. It will hopefully become a pip package in the future, but for now, you can use the bash script to install the dependencies.
 
 ## Usage
 
@@ -54,7 +53,8 @@ Replace `operation_name` with the name of the operation you want to perform. The
 - `pan`: Pan an audio file.
 - `mono`: Convert an audio file to mono.
 
-For more details on the available operations and options, run:
+
+For a detailed list of operations and their options, run:
 
 ```sh
 ./wac.py -h
