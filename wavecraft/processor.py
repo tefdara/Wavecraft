@@ -15,10 +15,11 @@ def mode_handler(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         # If in render mode, preview the sound first
+        output = os.path.splitext(self.args.input)[0] + '.wav'
         if self.mode == "render":
             if self.batch:
                 debug.log_warning("Batch processing. Skipping preview...")
-                self._render(result, args.output)
+                self._render(result, output)
                 return
             else:
                 prev_result = np.copy(result)
@@ -31,7 +32,7 @@ def mode_handler(func):
                     confirmation = input(f"\n{colors.GREEN}Do you want to render the results?{colors.ENDC}\n\n1) Render\n2) Replay preview\n3) Exit\n")
                     if confirmation.lower() == '1':
                         debug.log_info("Rendering")
-                        self._render(result)
+                        self._render(result, output)
                         debug.log_info("Done!")
                         break
                     elif confirmation.lower() == '2':
@@ -56,6 +57,7 @@ class Processor:
         self.args = args
         self.mode = mode
         self.batch = batch
+        
     
     def _render(self, y, file):
         sf.write(file, y, self.args.sample_rate, format='WAV', subtype='PCM_24')

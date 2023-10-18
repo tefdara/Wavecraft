@@ -4,7 +4,6 @@ import os, sys, argparse
 from wavecraft import operator
 from wavecraft import utils
 
-
 if __name__ == "__main__":
     utils.print_ascii_art()
     formatter_class=lambda prog: argparse.HelpFormatter(prog,
@@ -80,7 +79,7 @@ if __name__ == "__main__":
     # Decomposition 
     decomposition_group = parser.add_argument_group(title='Decomposition - decomposes the audio file into harmonic, percussive or n components', description='operation -> decomp')
     decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
-    decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive"], help="Decompose the signal into harmonic and percussive components, before computing segments.", required=False, metavar='')
+    decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive", 'hp'], help="Decompose the signal into harmonic and percussive components, If used for segmentation, the choice of both is invalid.", required=False, metavar='')
 
     # Beat detection 
     beat_group = parser.add_argument_group(title='Beat detection - detects beats in the audio file', description='operation -> beat')

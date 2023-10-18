@@ -1,4 +1,4 @@
-import os, sys, time
+import os, sys, asyncio
 import librosa, soundfile as sf
 from .segmentor import Segmentor
 from .feature_extractor import Extractor
@@ -77,8 +77,8 @@ def main(args, revert=None):
             craft.main()
         elif args.operation == "decomp":
             debug.log_info(f'<Decomposing> {file}')
-            craft = Decomposer(args)
-            craft.main()
+            craft = Decomposer(args, True)
+            asyncio.run(craft.main())
         elif args.operation == "filter":
             debug.log_info(f'Applying <filter> to {file}')
             processor.filter(args.y, args.sample_rate, args.filter_frequency, args.filter_type)

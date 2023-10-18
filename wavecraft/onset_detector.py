@@ -86,13 +86,13 @@ class OnsetDetector:
             self.args.hop_size = int(librosa.time_to_samples(1./200, sr=self.args.sample_rate))
         if self.args.source_separation is not None:
             # wait for the decomposition to finish
-            from decomposer import Decomposer
-            debug.log_info('Decomposing the signal into harmonic and percussive components...')
-            decomposer = Decomposer(self.input, 'hpss', render=True, render_path=os.path.join(os.path.dirname(self.input), 'components'))
-            H, P = await decomposer._decompose_hpss(self.args.y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
-            if self.decompose == 'harmonic':
+            from .decomposer import Decomposer
+            debug.log_info('<Decomposing> the signal into harmonic and percussive components...')
+            decomposer = Decomposer(self.args)
+            H, P = await decomposer.main()
+            if self.args.source_separation == 'harmonic':
                 self.args.y = H
-            elif self.decompose == 'percussive':
+            elif self.args.source_separation == 'percussive':
                 self.args.y = P
             else:
                 raise ValueError('Invalid decomposition type.')

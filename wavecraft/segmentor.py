@@ -92,7 +92,7 @@ class Segmentor:
                 
     def main(self):
         if self.args.segmentation_method == 'onset':
-            from.onset_detector import OnsetDetector
+            from .onset_detector import OnsetDetector
             detector = OnsetDetector(self.args)
             segments = asyncio.run(detector.main())
         elif self.args.segmentation_method == 'beat':
