@@ -78,9 +78,10 @@ if __name__ == "__main__":
                                     
     # Decomposition 
     decomposition_group = parser.add_argument_group(title='Decomposition - decomposes the audio file into harmonic, percussive or n components', description='operation -> decomp')
-    decomposition_group.add_argument("-n", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
+    decomposition_group.add_argument("-nc", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
     decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive", 'hp'], help="Decompose the signal into harmonic and percussive components, If used for segmentation, the choice of both is invalid.", required=False, metavar='')
-
+    decomposition_group.add_argument("-sk", "--sklearn", action='store_true', default=False, help="Use sklearn for decomposition. Default is False.", required=False)
+    
     # Beat detection 
     beat_group = parser.add_argument_group(title='Beat detection - detects beats in the audio file', description='operation -> beat')
     beat_group.add_argument("-k", type=int, default=5, help="Number of beat clusters to detect. Default is 5.", required=False, metavar='')

@@ -12,28 +12,35 @@ class Decomposer:
     def __init__(self, args, render = False):
         self.args = args
         self.render = render
-        self.output_path = os.path.splitext(args.input)[0] + '_decomposed'
-        self.output_file_harmonic = os.path.join(self.output_path, 'harmonic.wav')
-        self.output_file_percussive = os.path.join(self.output_path, 'percussive.wav')
+        self.input_file_name = os.path.splitext(os.path.basename(args.input))[0]
+        self.output_path = os.path.join(os.path.dirname(args.input), self.input_file_name + '_decomposed')
+        self.output_file_harmonic = os.path.join(self.output_path, args.input + '_harmonic.wav')
+        self.output_file_percussive = os.path.join(self.output_path, args.input + '_percussive.wav')
+        from .processor import Processor
+        self.processor = Processor(self.args)
+        
+        asyncio.run(self._decompose_nn_filter(self.args.y))
+        sys.exit(0)
+        if args.sklearn:
+            if args.source_separation is not None:
+                debug.log_error(f'Cannot use sklearn with source separation.')
+            self.method = 'sklearn'
         if args.source_separation is None:
             self.method = 'decompose'
         else:
             self.method = 'hpss'    
         
     async def main(self):
-
-        # if self.output_path is None and self.render:
-        #     self.output_path = os.path.join(os.path.dirname(self.input_file), 'components')
-
         if self.method == 'decompose':
-            comps, acts = await self._decompose_n(self.args.y, n_components=self.args.n_components, render_path=self.output_path)
-            debug.log_info(f'Decomposed the signal into {self.n_components} components.')
+            comps, acts, phase = await self._decompose_n(self.args.y, n_components=self.args.n_components)
+            debug.log_info(f'Decomposed the signal into <{self.args.n_components}> components.')
             if not self.render:
                 debug.log_info(f'Render not requested. Returning components...')
                 return comps, acts
 
             debug.log_info(f'Rendering components to {self.output_path}...')
-            self.render_components(comps, acts, self.args.sample_rate, self.output_path)
+            self.render_components(comps, acts, self.args.n_components, phase)
+            
             return comps, acts
 
         elif self.method == 'hpss':
@@ -64,21 +71,20 @@ class Decomposer:
             return y_harmonic, y_percussive
         
         elif self.method == 'sklearn':
-            scomps, sacts = await self._decompose_sk(self.args.y, n_components=self.n_components)
+            scomps, sacts, sphase = await self._decompose_sk(self.args.y, n_components=self.args.n_components)
+            debug.log_info(f'Decomposed the signal into <{self.args.n_components} components>, using <sklearn>.')
             if not self.render:
-                debug.log_info(f'Decomposed the signal into {self.n_components} components.')
-                debug.log_info(f'Render not requested. Exiting...')
+                debug.log_info(f'Render not requested. Returning components...')
                 return
-            debug.log_info(f'Decomposed the signal into {self.n_components} components.')
             debug.log_info(f'Rendering components to {self.output_path}...')
-            self.render_components(scomps, sacts, self.args.sample_rate, self.output_path)
+            self.render_components(scomps, sacts, self.args.n_components, sphase)
 
-    async def _decompose_n(self, y, n_components=4, spectogram=None, n_fft=1024, hop_length=512, render_path=None):
+    async def _decompose_n(self, y, n_components=4, spectogram=None):
         if spectogram is None:
-            spectogram = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
+            spectogram = librosa.stft(y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
         S, phase = librosa.magphase(spectogram)
-        comps, acts = librosa.decompose.decompose(S, n_components=n_components, sort=True)
-        return comps, acts
+        comps, acts = librosa.decompose.decompose(S, n_components=n_components, sort=True, max_iter=1000)
+        return comps, acts, phase
 
     async def _decompose_hpss(self, y):
         s = librosa.stft(y, n_fft=self.args.n_fft, hop_length=self.args.hop_size)
@@ -87,32 +93,54 @@ class Decomposer:
         y_percussive = librosa.istft(P, length=len(y))
         return y_harmonic, y_percussive
 
-    async def _decompose_sk(self, y, n_components, n_fft=1024, hop_length=512):
+    async def _decompose_sk(self, y, n_components):
         S = np.abs(librosa.stft(y))
-        T = sklearn.decomposition.MiniBatchDictionaryLearning(n_components=16)
+        T = sklearn.decomposition.MiniBatchDictionaryLearning(n_components=n_components, max_iter=1000)
         scomps, sacts = librosa.decompose.decompose(S, transformer=T, sort=True)
-        return scomps, sacts
+        sphase = np.exp(1.j * np.angle(librosa.stft(y)))
+        return scomps, sacts, sphase
     
-    def render_components(self, components, activations, n_components, phase, render_path, sr=48000, hop_length=512):
+    async def _decompose_nn_filter(self, y):
+        S = librosa.feature.melspectrogram(y=y, sr=self.args.sample_rate, n_mels=128)
+        S_db = librosa.power_to_db(S, ref=np.max)
+        S_filtered = librosa.decompose.nn_filter(S, aggregate=np.median, metric='cosine')
+        y_filtered = librosa.feature.inverse.mel_to_audio(S_filtered, sr=self.args.sample_rate)
+        self.render_core(y_filtered, self.args.sample_rate, os.path.join(self.output_path, self.input_file_name + '_filtered.wav'))
+        
+    def render_components(self, components, activations, n_components, phase):
     
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path)
+        
+        output_file = os.path.join(self.output_path, self.input_file_name + '_component_')
         
         for i in range(n_components):
-            # Reconstruct the spectrogram of the component
+            # Combine the component with the phase
             component_spectrogram = components[:, i:i+1] @ activations[i:i+1, :]
-            # Combine magnitude with the original phase
             component_complex = component_spectrogram * phase
             # Get the audio signal back using inverse STFT
-            y_comp = librosa.istft(component_complex, hop_length=hop_length)
-            
-            # Save the component to an audio file
-            sf.write(os.path.join(render_path, f'component_{i}.wav'), y_comp, sr)
+            y_comp = librosa.istft(component_complex, hop_length=self.args.hop_size)
+            file = output_file + str(i+1) + ".wav"
+            debug.log_info(f'Rendering <component {i+1}> to {file}...')
+            self.render_core(y_comp, self.args.sample_rate, file)
 
     def render_hpss(self, y, sr, render_path, type='harmonic'):
-        if not os.path.exists(render_path):
-            os.makedirs(render_path)
-        sf.write(os.path.join(render_path, type+'.wav'), y, sr)
+        self.render_core(y, sr, os.path.join(render_path, self.input_file_name + '_' + type + '.wav'))
+        
+    def render_core(self, y, sr, output_file, normalise=True, highPassFilter=True):
+        dir = os.path.dirname(output_file)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+            
+        if highPassFilter:
+            if self.args.filter_frequency == 40:
+                self.args.filter_frequency = 50
+            y = self.processor.filter(y, sr, self.args.filter_frequency)
+        if normalise:
+            if self.args.normalisation_level == -3:
+                self.args.normalisation_level = -5
+            y = self.processor.normalise_audio(y, sr, self.args.normalisation_level)
+        sf.write(output_file, y, sr)
 
     def run(self):
         try:

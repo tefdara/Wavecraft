@@ -1,4 +1,4 @@
-import logging
+import sys, logging
 
 class colors:
     WHITE = '\033[97m'
@@ -108,6 +108,7 @@ class Debug:
         level, message = logger.parse_message(message, type='error')
         log = logger.get_logger('error')
         log.error(message, extra=level)
+        sys.exit(1)
     
     @staticmethod
     def log_warning(message):
