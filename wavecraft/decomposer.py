@@ -7,6 +7,7 @@ import numpy as np
 import sklearn.decomposition
 from .debug import Debug as debug
 import soundfile as sf
+from . import utils
 
 class Decomposer:
     def __init__(self, args, render = False):
@@ -19,16 +20,19 @@ class Decomposer:
         from .processor import Processor
         self.processor = Processor(self.args)
         
-        asyncio.run(self._decompose_nn_filter(self.args.y))
-        sys.exit(0)
-        if args.sklearn:
+        if args.sklearn and args.nn_filter:
+            debug.log_error(f'Cannot use sklearn and nn_filter together.')
+        if args.sklearn or args.nn_filter:
             if args.source_separation is not None:
                 debug.log_error(f'Cannot use sklearn with source separation.')
-            self.method = 'sklearn'
-        if args.source_separation is None:
-            self.method = 'decompose'
-        else:
-            self.method = 'hpss'    
+            if args.sklearn:self.method = 'sklearn'
+            if args.nn_filter:
+                self.method = 'nn_filter'
+        if not args.sklearn and not args.nn_filter:
+            if args.source_separation is None:
+                self.method = 'decompose'
+            else:
+                self.method = 'hpss'    
         
     async def main(self):
         if self.method == 'decompose':
@@ -78,6 +82,10 @@ class Decomposer:
                 return
             debug.log_info(f'Rendering components to {self.output_path}...')
             self.render_components(scomps, sacts, self.args.n_components, sphase)
+        
+        elif self.method == 'nn_filter':
+            debug.log_info(f'Filtering the signal using <nn_filter>...')
+            await self._decompose_nn_filter(self.args.y)
 
     async def _decompose_n(self, y, n_components=4, spectogram=None):
         if spectogram is None:
@@ -101,11 +109,19 @@ class Decomposer:
         return scomps, sacts, sphase
     
     async def _decompose_nn_filter(self, y):
-        S = librosa.feature.melspectrogram(y=y, sr=self.args.sample_rate, n_mels=128)
-        S_db = librosa.power_to_db(S, ref=np.max)
+        if self.args.spectogram is None:
+            S = librosa.feature.melspectrogram(y=y, sr=self.args.sample_rate, n_mels=128)
+        else:
+            S = utils.compute_spectrogram(y, self.args.sample_rate, self.args.spectogram, self.args.n_fft, self.args.hop_size, self.args.n_mels, self.args.fmin)
+            
+        # S_db = librosa.power_to_db(S, ref=np.max)
         S_filtered = librosa.decompose.nn_filter(S, aggregate=np.median, metric='cosine')
         y_filtered = librosa.feature.inverse.mel_to_audio(S_filtered, sr=self.args.sample_rate)
-        self.render_core(y_filtered, self.args.sample_rate, os.path.join(self.output_path, self.input_file_name + '_filtered.wav'))
+        
+        if utils.preview_audio(y_filtered, self.args.sample_rate) == True:
+            debug.log_info(f'Rendering <filtered> signal to {self.output_path}...')
+            self.render_core(y_filtered, self.args.sample_rate, os.path.join(self.output_path, self.input_file_name + '_filtered.wav'))
+        
         
     def render_components(self, components, activations, n_components, phase):
     
@@ -132,15 +148,23 @@ class Decomposer:
         if not os.path.exists(dir):
             os.makedirs(dir)
             
+        y = self.process(y, sr, normalise, highPassFilter)
+        
+        sf.write(output_file, y, sr)
+        
+    def process(self, y, sr, normalise=True, highPassFilter=True):
         if highPassFilter:
             if self.args.filter_frequency == 40:
                 self.args.filter_frequency = 50
             y = self.processor.filter(y, sr, self.args.filter_frequency)
+       
         if normalise:
             if self.args.normalisation_level == -3:
                 self.args.normalisation_level = -5
             y = self.processor.normalise_audio(y, sr, self.args.normalisation_level)
-        sf.write(output_file, y, sr)
+            
+        self.processor.fade_io(y, sr, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
+        return y
 
     def run(self):
         try:

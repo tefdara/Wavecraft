@@ -40,7 +40,12 @@ if __name__ == "__main__":
     audio_settings_group.add_argument("-fo", "--fade-out", type=int, default=50, help=f"Duration in ms for fade in. Default is {fi_def}ms.", required=False, metavar='')
     audio_settings_group.add_argument("-c", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fades. Default is exponential.", required=False, metavar='')
-
+    audio_settings_group.add_argument("-spc", "--spectogram", type=str, choices=['mel', 'cqt', 'stft', 'cqt_chroma'], default=None,\
+                        help="Spectogram to use when doing processes like decomposition among others. \
+                            Default is None, in which case the appropiate spectogram will be used. Change this option only if you know what you are doing or if you want to experiment.", required=False, metavar='')
+    audio_settings_group.add_argument("-nra", "--no-resolution-adjustment", action='store_true', default=False, 
+                                      help="Disables the automatic adjusment of the analysis resolution and audio settings based on file duration. It is enabled by default.", required=False)
+    
     # Segmentation
     segmentation_group = parser.add_argument_group(title='Segmentation : splits the audio file into segments', description='operation -> segment')
     segmentation_group.add_argument("-m", "--segmentation-method", type=str, choices=["onset", "beat", "text"], required=False, default="onset",
@@ -81,6 +86,8 @@ if __name__ == "__main__":
     decomposition_group.add_argument("-nc", "--n-components", type=int, default=4, help="Number of components to use for decomposition.", required=False, metavar='')
     decomposition_group.add_argument("-hpss", "--source-separation", type=str, default=None, choices=["harmonic", "percussive", 'hp'], help="Decompose the signal into harmonic and percussive components, If used for segmentation, the choice of both is invalid.", required=False, metavar='')
     decomposition_group.add_argument("-sk", "--sklearn", action='store_true', default=False, help="Use sklearn for decomposition. Default is False.", required=False)
+    decomposition_group.add_argument("-nnf", "--nn-filter", action='store_true', default=False, 
+                                     help="Use nearest neighbor filtering for decomposition. Default is False. Produces a single stream, n_components and hpss are not valid", required=False)
     
     # Beat detection 
     beat_group = parser.add_argument_group(title='Beat detection - detects beats in the audio file', description='operation -> beat')

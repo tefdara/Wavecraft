@@ -60,7 +60,7 @@ class Logger:
     def extra_log_value(self, value, unit):
         return {'value': value, 'unit': unit}
     
-    def parse_message(self, message, type):
+    def parse_message(self, message, type, any=None):
         #words that are wrapped in <> or any numbers will highlight based on the type of message
         type = type.upper()
         if type == 'INFO':
@@ -88,6 +88,14 @@ class Logger:
         elif type == 'DONE':
             message = message.replace('<', f'{colors.CYAN}')
             level = type.replace('DONE', f'[ {colors.GREEN}DONE{colors.ENDC} ]')
+        elif type == 'ANY':
+            message = message.replace('<', f'{colors.CYAN}')
+            message = message.replace('>', f'{colors.ENDC}')
+            if any is None: 
+                raise ValueError('No value provided for ANY type.')
+            else:
+                any = any.upper()
+            level = type.replace('ANY', f'[ {colors.GREEN}{any}{colors.ENDC} ]')
             
         message = message.replace('>', f'{colors.ENDC}')
 
@@ -104,11 +112,12 @@ class Debug:
         log.info(message, extra=level)
         
     @staticmethod
-    def log_error(message):
+    def log_error(message, exit=True):
         level, message = logger.parse_message(message, type='error')
         log = logger.get_logger('error')
         log.error(message, extra=level)
-        sys.exit(1)
+        if exit:
+            sys.exit(1)
     
     @staticmethod
     def log_warning(message):
@@ -135,5 +144,11 @@ class Debug:
     @staticmethod
     def log_done(message):
         level, message = logger.parse_message(message, type='done')
+        log = logger.get_logger('message')
+        log.info(message, extra=level)
+    
+    @staticmethod
+    def log_any(message, any):
+        level, message = logger.parse_message(message, type='any', any=any)
         log = logger.get_logger('message')
         log.info(message, extra=level)

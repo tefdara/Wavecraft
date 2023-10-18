@@ -1,9 +1,27 @@
-import os, time
+import os, time, librosa
 import numpy as np 
 import subprocess, tempfile, json
 import threading
-from .debug import Debug as debug
+from .debug import Debug as debug, colors
+import sounddevice as sd
 
+
+#######################
+# Spectrogram
+#######################
+
+def compute_spectrogram(y, sr, spec_type, n_fft, hop_length, n_mels, fmin):
+    print(n_fft, hop_length, n_mels, fmin)
+    if spec_type == 'mel':
+        return librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+    elif spec_type == 'cqt':
+        return np.abs(librosa.cqt(y, sr=sr, hop_length=hop_length, fmin=fmin))
+    elif spec_type == 'stft':
+        return np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))
+    elif spec_type == 'cqt_chroma':
+        return librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length, fmin=fmin)
+    else:
+        raise ValueError(f"Unsupported spec_type: {spec_type}")
 
 #######################
 # Metadata
@@ -221,6 +239,55 @@ def adjust_anal_res(args):
     n_mels = int(128 * scale_factor)
     return n_fft, hop_size, win_length, n_bins, n_mels
 
+#######################
+# Preview
+#######################
+
+def preview_audio(y, sr):
+    """
+    A standalone function to play audio data and wait for user input.
+    
+    Parameters:
+    - y: The filtered audio data.
+    - sample_rate: Sample rate for audio playback.
+    - logger: A logging object/module with log_any, log_info, log_warning, and log_error methods.
+    
+    Returns:
+    - True if user confirms, else False.
+    """
+    print()
+    debug.log_any(f'Results...', 'preview')
+    y = basic_process(y, sr)
+    sd.play(y, samplerate=sr)
+        
+    while True:
+        confirmation = input(f"\n{colors.GREEN}Do you want to render the results?{colors.ENDC}\n\n1) Confirm\n2) Replay preview\n3) Exit\n")
+        
+        if confirmation.lower() == '1':
+            debug.log_info("Result confirmed")
+            sd.stop()
+            return True
+        elif confirmation.lower() == '2':
+            debug.log_info("Replaying")
+            sd.play(y, samplerate=sr)
+            sd.wait()
+        elif confirmation.lower() == '3':
+            debug.log_warning("Exiting without confirmation")
+            return False
+        else:
+            debug.log_error("Invalid input! Choose one of the options below.", False)
+            continue
+
+def basic_process(y, sr, normalise=True, highPassFilter=True):
+    from .processor import Processor
+    processor = Processor()
+    y = processor.filter(y, sr, 40)
+    y = processor.normalise_audio(y, sr, -3)
+    y = processor.fade_io(y, sr)
+    return y
+
+def finish_timer(condition):
+    condition = True
 
 #######################
 # File management

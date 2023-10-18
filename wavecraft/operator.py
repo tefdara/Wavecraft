@@ -56,7 +56,9 @@ def main(args, revert=None):
                 sys.exit()
             args.num_samples = args.y.shape[-1]
             args.duration = args.num_samples / args.sample_rate
-            args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
+            if args.no_resolution_adjustment == False:
+                debug.log_info(f'Adjusting analysis resolution for short signal...')
+                args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
             args.num_frames = int(args.num_samples / args.hop_size)
         
         if args.operation == "segment":
@@ -118,8 +120,9 @@ def main(args, revert=None):
         args.hop_size = hop_size
         args.window_length = window_length
         args.n_bins = n_bins
-        args.n_mels = n_mels 
-
+        args.n_mels = n_mels
+        
+    debug.log_done(f'<{args.operation}>')
  
 def load_files(input):
     files = []

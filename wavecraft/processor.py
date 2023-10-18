@@ -53,10 +53,18 @@ def mode_handler(func):
 
 
 class Processor:
-    def __init__(self, args, mode='raw', batch=True):
+    def __init__(self, args=None, mode='raw', batch=True):
         self.args = args
         self.mode = mode
         self.batch = batch
+        if args == None:
+            self.args = type('', (), {})()
+            self.args.input = ' '
+            self.args.sample_rate = 48000
+            self.args.normalisation_level = -3
+            self.args.filter_frequency = 40
+            self.args.fade_in = 30
+            self.args.fade_out = 30
         
     
     def _render(self, y, file):
@@ -105,7 +113,7 @@ class Processor:
         return y
 
     @mode_handler
-    def fade_io(self, y, sr, fade_in=0, fade_out=0, curve_type='exp'):
+    def fade_io(self, y, sr, fade_in=20, fade_out=20, curve_type='exp'):
         return self.fade_io_internal(y, sr, fade_in, fade_out, curve_type=curve_type)
     
 #############################################
