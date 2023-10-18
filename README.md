@@ -1,6 +1,6 @@
 # Wave Craft
 
-Wave Craft is a Python-based tool for audio manipulation, segmentation and batch processing. It started as a unification of a lot of small bash and python tools I have made over time to make my life easier. However, it is slowly growing into a more comprehensive tool for audio processing. Wave Craft has a command-line interface for performing various operations on audio files. In its simplest form, it requires an operation name and an input file. The input can be a directory of files for batch processing. It can also take a text file as input for some operations. See the [Usage](#usage) section for more details.
+Wave Craft is a Python-based tool for audio manipulation, segmentation and batch processing. It started as a unification of a lot of small bash and python tools I have made over time to make my life easier. However, it is slowly growing into a more comprehensive tool for audio processing. Wave Craft has a command-line interface for performing various operations on audio files. In its simplest form, it requires an operation name and an input file. The input can be a directory of files for batch processing. It can also take a text file as input for some operations. See the [usage](#usage) section for more details.
 
 Wave Craft is a work in progress. I'll be updating and expanding it in the coming months, years and... decades? I don't know. I'll be adding more operations and features if time permits. If you have any suggestions or feedback, please let me know.
 
