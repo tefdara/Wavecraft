@@ -56,7 +56,7 @@ if __name__ == "__main__":
     segmentation_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False, metavar='')
     segmentation_group.add_argument("-oe", "--onset-envelope", type=str, choices=['mel', 'mfcc', 'cqt_chr', 'rms', 'zcr', 'cens', 'tmpg', 'ftmpg', 'tonnetz'], default="mel",\
                         help="Onset envelope to use for onset detection. Default is mel (mel spectrogram).\n Choices are: mel (mel spectrogram), mfcc (Mel-frequency cepstral coefficients), cqt_chr (chroma constant-Q transform), rms (root-mean-square energy), zcr (zero-crossing rate), cens (chroma energy normalized statistics), tmpg (tempogram), ftmpg (fourier tempogram), tonnetz (tonal centroid features)", required=False, metavar='')
-    segmentation_group.add_argument("-bl", "--backtrack-length", type=float, default=20, help="Backtrack length in miliseconds. Backtracks the segments from the detected onsets. Default is 20ms.", required=False, metavar='')
+    segmentation_group.add_argument("-bl", "--backtrack-length", type=float, default=40, help="Backtrack length in miliseconds. Backtracks the segments from the detected onsets. Default is 20ms.", required=False, metavar='')
                                     
     # Feature extraction
     feature_extraction_group = parser.add_argument_group(title='Feature extraction', description='operation -> extract')

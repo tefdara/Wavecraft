@@ -21,10 +21,10 @@ class Decomposer:
         self.processor = Processor(self.args)
         
         if args.sklearn and args.nn_filter:
-            debug.log_error(f'Cannot use sklearn and nn_filter together.')
+            debug.log_error('Cannot use sklearn and nn_filter together.')
         if args.sklearn or args.nn_filter:
             if args.source_separation is not None:
-                debug.log_error(f'Cannot use sklearn with source separation.')
+                debug.log_error('Cannot use sklearn with source separation.')
             if args.sklearn:self.method = 'sklearn'
             if args.nn_filter:
                 self.method = 'nn_filter'
@@ -39,7 +39,7 @@ class Decomposer:
             comps, acts, phase = await self._decompose_n(self.args.y, n_components=self.args.n_components)
             debug.log_info(f'Decomposed the signal into <{self.args.n_components}> components.')
             if not self.render:
-                debug.log_info(f'Render not requested. Returning components...')
+                debug.log_info('Render not requested. Returning components...')
                 return comps, acts
 
             debug.log_info(f'Rendering components to {self.output_path}...')
@@ -49,10 +49,10 @@ class Decomposer:
 
         elif self.method == 'hpss':
             y_harmonic, y_percussive = await self._decompose_hpss(self.args.y)
-            debug.log_info(f'<Decomposed> the signal into harmonic and percussive components.')
+            debug.log_info('<Decomposed> the signal into harmonic and percussive components.')
             
             if not self.render:
-                debug.log_info(f'Render not requested. Returning components...')
+                debug.log_info('Render not requested. Returning components...')
             
             else:
                 if self.args.source_separation == 'harmonic':

@@ -22,6 +22,7 @@ class Segmentor:
         segment_samps = segment_samps - int(self.args.backtrack_length * sr_m / 1000)
         
         meta_data = utils.generate_metadata(self.args.input, self.args)
+        
         count = 0
         for i in range(len(segment_samps)):
             if i == len(segment_samps) - 1:
@@ -32,7 +33,7 @@ class Segmentor:
                 start_sample = segment_samps[i]
                 end_sample = segment_samps[i + 1]
             segment = y_m[start_sample:end_sample]
-            segment = self.processor.fade_io(segment, self.args.sample_rate, fade_out=60, curve_type=self.args.curve_type)
+            segment = self.processor.fade_io(segment, sr_m, fade_out=60, curve_type=self.args.curve_type)
             segment = self.processor.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
@@ -40,9 +41,9 @@ class Segmentor:
                 debug.log_warning(f'Skipping segment {i+1} because it\'s too short: {segment_length}s')
                 continue 
             count += 1
-            segment = self.processor.fade_io(segment, self.args.sample_rate, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
-            segment = self.processor.filter(segment, self.args.sample_rate, self.args.filter_frequency, btype=self.args.filter_type)
-            segment = self.processor.normalise_audio(segment, self.args.sample_rate, self.args.normalisation_level, self.args.normalisation_mode)
+            segment = self.processor.fade_io(segment, sr_m, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
+            segment = self.processor.filter(segment, sr_m, self.args.filter_frequency, btype=self.args.filter_type)
+            segment = self.processor.normalise_audio(segment, sr_m, self.args.normalisation_level, self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
             
             short_path = os.path.basename(segment_path)

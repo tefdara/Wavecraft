@@ -93,6 +93,12 @@ class Processor:
         elif dur >= 2.0:
             max_len_percent = len(y)*0.5 # 50% 
             
+        if self.mode == "render":
+            if fade_in + fade_out > dur*1000:
+                debug.log_error('Requested fade duration is longer than audio length! Exiting...')
+                return y
+            max_len_percent = len(y)
+            
         # convert fade duration to samples
         fade_in_samples = int(fade_in * sr / 1000)
         fade_in_samples = int(min(fade_in_samples, max_len_percent))+1    
@@ -121,7 +127,7 @@ class Processor:
 #############################################
 
     @mode_handler
-    def filter(self, data, sr, cutoff, btype='high', order=5):
+    def filter(self, data, sr, cutoff, btype='high', order=4):
         if(cutoff == 0):
             return data
         
