@@ -75,6 +75,8 @@ if __name__ == "__main__":
                         help='Class to analyse. Default: stats. If not provided, all classes will be analysed. Note that this option can produce unexpected results if the dataset contains multiple classes with different dimensions', metavar='')
     proxi_metor_group.add_argument('-mt', '--metric-to-analyze', type=str, default=None,
                         help='Metric to analyze', metavar='')
+    proxi_metor_group.add_argument('-tc', '--test-condition', type=str, default=None, help='Test condition for the specified metric. A condition is a string that can be used to filter the dataset. For example, -mt duration -tc 0.5-1.5 or -mt duration -tc <0.5. \
+                                   Default: None', metavar='')
     proxi_metor_group.add_argument('-ops', action='store_true', default=False,
                         help='Use opetions file to fine tune the metric learning')
     proxi_metor_group.add_argument('-mn', '--n-max', type=int, default=-1, 

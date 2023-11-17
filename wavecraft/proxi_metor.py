@@ -3,6 +3,7 @@
 import asyncio, yaml, sys, os, shutil
 import numpy as np
 import pandas as pd
+import re
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
 from . import utils
@@ -11,13 +12,15 @@ from .debug import Debug as debug
 class ProxiMetor:
     def __init__(self, args):
         self.args = args
+        self.test_identifier = None
+        self.condition_satified = False
         if os.path.isdir(self.args.input):
             self.audio_path = os.path.abspath(self.args.input)
             self.data_path = os.path.join(self.audio_path, 'analysis')
             if not os.path.exists(self.data_path):
                 self.data_path = utils.get_analysis_path()
         else:
-            utils.error_logger.error('Invalid input! Please provide a directory for proximity analysis.')
+            debug.log_error('Invalid input! Please provide a directory for proximity analysis.')
             sys.exit(1)
             
         self.ops = None
@@ -25,7 +28,9 @@ class ProxiMetor:
         if(self.args.ops):
             # Load the options yamle file from this directory
             ops_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "metric_ops.yaml")
-            self.ops = yaml.load(open(ops_file), Loader=yaml.FullLoader)
+            with open(ops_file, encoding='utf-8') as f:
+                self.ops = yaml.load(f, Loader=yaml.FullLoader)
+            
     
     def expand_nested_columns(self, df):
         new_columns = []
@@ -43,6 +48,24 @@ class ProxiMetor:
         df = pd.concat([df.drop(columns=drop_columns)] + new_columns, axis=1)
         
         return df
+    
+    def check_condition(self, value, condition):
+        if '-' in condition:
+            lower, upper = map(float, condition.split('-'))
+            return lower <= value <= upper
+        else:
+            match = re.match(r"([<>]=?)(\d+(\.\d+)?)", condition)
+            if match:
+                operator, number = match.groups()[0], float(match.groups()[1])
+                if operator == '>':
+                    return value > number
+                elif operator == '<':
+                    return value < number
+                elif operator == '>=':
+                    return value >= number
+                elif operator == '<=':
+                    return value <= number
+        return False
             
     def find_n_most_similar(self, identifier, df, metric=None, n=5, clss="stats"):
         """
@@ -79,6 +102,28 @@ class ProxiMetor:
             standardized_features = scaler.fit_transform(df[descriptors_columns])
             df[descriptors_columns] = standardized_features
             columns_to_compare = descriptors_columns
+        
+        if self.args.test_condition:
+            if identifier is not None:
+                raise ValueError("Identifier must be None when using a condition")
+            debug.log_info('Using test condition')
+            # set identifier to the first row that satisfies the condition
+            for _, row in df.iterrows():
+                if self.check_condition(row[metric], self.args.test_condition):
+                    identifier = row["id"]
+                    self.test_identifier = identifier
+                    break
+                
+            sound_data = df[df["id"] == identifier].iloc[0]
+            
+            def process_row(row):
+                dist = distance.euclidean(sound_data[columns_to_compare].values, row[columns_to_compare].values)
+                return (row["id"], dist) if self.check_condition(dist, self.args.test_condition) else None
+
+            distances = df[df["id"] != identifier].apply(process_row, axis=1).dropna().tolist()
+            distances.sort(key=lambda x: x[1])
+            self.condition_satified = True
+            return [item[0] for item in distances]
         
         # Filter by the given identifier
         sound_data = df[df["id"] == identifier].iloc[0]
@@ -199,7 +244,7 @@ class ProxiMetor:
         if(clss == "classifications"):
             return self.find_n_most_similar_classifications(id, df_copy, n=n, clss=clss)
         if ops:
-            self.find_n_most_similar_weighted(id, df_copy, ops)
+            return self.find_n_most_similar_weighted(id, df_copy, ops)
         else:
             return self.find_n_most_similar(id, df_copy, metric=metric, n=n, clss=clss)
             
@@ -263,20 +308,22 @@ class ProxiMetor:
     async def process_batch(self, all_files, used_files, df, metric=None, n=5, clss="stats", id=None, ops=None):
         """Process a batch of sounds asynchronously."""
         if(id):
-            primary_file = id
+            self.test_identifier = id
         else:
-            primary_file = all_files.pop()
-            
+            if self.args.test_condition:
+                self.test_identifier = None
+            else:
+                self.test_identifier = all_files.pop()
 
         similar_files = self.find_n_most_similar_for_a_file(used_files=used_files, 
-                                                            id=primary_file, 
+                                                            id=self.test_identifier, 
                                                             df=df, 
                                                             metric=metric, 
                                                             n=n, 
                                                             clss=clss, 
                                                             ops=ops)
-        debug.log_info(f'Found {len(similar_files)} similar sounds for {primary_file} ')
-        await self.copy_similar_to_folders(self.base_path, self.data_path, primary_file, similar_files)
+        debug.log_info(f'Found {len(similar_files)} similar sounds for {self.test_identifier} ')
+        await self.copy_similar_to_folders(self.base_path, self.data_path, self.test_identifier, similar_files)
         used_files.update(similar_files)
         all_files.difference_update(used_files)
         
@@ -321,15 +368,22 @@ class ProxiMetor:
         used_files = set()
         loop = asyncio.get_event_loop()
         
-        while all_files and len(used_files) < self.args.n_max:
+        condition_provided = bool(self.args.test_condition)
+
+        while all_files and (not condition_provided or len(used_files) < self.args.n_max):
             loop.run_until_complete(self.process_batch(all_files=all_files, 
-                                                used_files=used_files, 
-                                                df=df, 
-                                                metric=self.args.metric_to_analyze, 
-                                                n=self.args.n_similar, 
-                                                clss=self.args.class_to_analyse, 
-                                                id=self.args.identifier, 
-                                                ops=self.ops))
+                                                    used_files=used_files, 
+                                                    df=df, 
+                                                    metric=self.args.metric_to_analyze, 
+                                                    n=self.args.n_similar, 
+                                                    clss=self.args.class_to_analyse, 
+                                                    id=self.args.identifier, 
+                                                    ops=self.ops))
+
+            if condition_provided:
+                if self.condition_satified:
+                    break
+
 
     
 

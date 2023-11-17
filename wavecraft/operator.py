@@ -59,8 +59,8 @@ def main(args, revert=None):
                 sys.exit()
             args.num_samples = args.y.shape[-1]
             args.duration = args.num_samples / args.sample_rate
-            if args.no_resolution_adjustment == False:
-                debug.log_info(f'Adjusting analysis resolution for short signal...')
+            if args.no_resolution_adjustment is False:
+                debug.log_info('Adjusting analysis resolution for short signal...')
                 args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
             args.num_frames = int(args.num_samples / args.hop_size)
         
@@ -112,12 +112,12 @@ def main(args, revert=None):
                 if(args.meta_file):
                     args.meta = utils.load_json(args.meta_file)
                 else:
-                    utils.error_debug.error('No metadata file provided!')
+                    debug.log_error('No metadata file provided!')
                     sys.exit()
                 utils.write_metadata(file, args.meta)
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
-                utils.extract_metadata(file, args)
+                utils.extract_metadata(file)
         print()
             
         args.n_fft = n_fft
