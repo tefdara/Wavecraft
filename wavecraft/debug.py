@@ -122,7 +122,7 @@ class Debug:
     @staticmethod
     def log_warning(message):
         level, message = logger.parse_message(message, type='warning')
-        log = logger.get_logger('warning')
+        log = logger.get_logger('message')
         log.info(message, extra=level)
     
     @staticmethod

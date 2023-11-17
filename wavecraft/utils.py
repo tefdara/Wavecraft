@@ -216,28 +216,42 @@ def deep_float_conversion(data):
     return data
 
 def adjust_anal_res(args):
-    """Adjust the analysis resolution based on the duration of the audio.
+    """
+    Adjust the analysis resolution based on the duration and sample rate of the audio.
+    
     Args:
         args: The arguments from the command line.
-        Returns:
+    
+    Returns:
         n_fft: The number of samples in each frame.
         hop_size: The number of samples between successive frames.
         win_length: The number of samples in each window.
         n_bins: The number of frequency bins.
         n_mels: The number of mel bins.
     """
-    if args.duration > 5.0:
-        return args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels
-    scale_factor = min(args.duration, 5.0) * 0.2 # scale based on a 5-second reference
+    standard_rate = 22050  # Standard sample rate (e.g., 44.1 kHz)
+    sample_rate_factor = args.sample_rate / standard_rate
+
+    # Scale factor based on duration and sample rate
+    duration_scale = min(args.duration, 5.0) / 5.0
+    scale_factor = duration_scale * sample_rate_factor
+
     length = args.y.shape[-1]
     n_fft = int(nearest_power_of_2(args.n_fft * scale_factor))
-    n_fft = min(n_fft, length)
-    hop_size = max(8, int(n_fft * 0.25))
-    # win_length = int(n_fft * 0.75) 
-    win_length = int(384 * (scale_factor*0.5))
-    n_bins = max(12, int(84 * scale_factor))
-    n_mels = int(128 * scale_factor)
+    n_fft = min(n_fft, args.n_fft)  # Ensure n_fft <= length
+    n_fft = max(128, n_fft)  # Ensure n_fft >= 8
+    hop_size = max(32, int(n_fft * 0.25))
+    
+    # Adjust window length and other parameters based on scale factor
+    win_length = max(48, int(384 * (scale_factor * 0.25)))
+    win_length = min(win_length, n_fft)  # Ensure win_length <= n_fft
+    n_bins = max(12, int(84 * scale_factor)) 
+    n_bins = min(n_bins, n_fft // 2 + 1)
+    n_mels = max(12, int(128 * scale_factor))
+    
+    # print(n_fft, hop_size, win_length, n_bins, n_mels, args.sample_rate, length)
     return n_fft, hop_size, win_length, n_bins, n_mels
+
 
 #######################
 # Preview

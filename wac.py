@@ -29,9 +29,10 @@ if __name__ == "__main__":
 
     # Audio settings
     audio_settings_group = parser.add_argument_group('Audio settings - these settings apply to all operations where relevant', description='')
-    audio_settings_group.add_argument("-sr","--sample-rate", type=int, default=48000, help="Sample rate of the audio file. Default is 44100.", required=False, metavar='')
+    audio_settings_group.add_argument("-sr","--sample-rate", type=int, default=22050, help="Sample rate that the files will be loaded in for processing.\
+                                      Default is 22050. Note that the default for exported sounds is the sound files' native sample rate", required=False, metavar='')
     audio_settings_group.add_argument("--fmin", type=float, default=30, help="Minimum analysis frequency. Default is 30.", required=False, metavar='')
-    audio_settings_group.add_argument("--fmax", type=float, default=16000, help="Maximum analysis frequency. Default is 16000", required=False, metavar='')
+    audio_settings_group.add_argument("--fmax", type=float, default=11000, help="Maximum analysis frequency. Default is 11000", required=False, metavar='')
     audio_settings_group.add_argument("--n-fft", type=int, default=2048, help="FFT size. Default is 2048.", required=False, metavar='')
     audio_settings_group.add_argument("--hop-size", type=int, default=512, help="Hop size. Default is 512.", required=False, metavar='')
     fo_def=30

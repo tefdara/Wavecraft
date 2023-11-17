@@ -31,6 +31,9 @@ def main(args, revert=None):
     debug.log_info('Loading...')
     files = load_files(args.input)
     
+    warnings = {}
+    errors = {}
+    
     if process:
         batch = True
         if len(files) == 1:
@@ -68,7 +71,7 @@ def main(args, revert=None):
         elif args.operation == "extract":
             debug.log_info(f'<Extracting features> for {file}')
             craft = Extractor(args)
-            craft.main()
+            errors, warnings = craft.main()
         elif args.operation == "onset":
             debug.log_info(f'Detecting <onsets> for {file}')
             craft = OnsetDetector(args)
@@ -83,7 +86,7 @@ def main(args, revert=None):
             asyncio.run(craft.main())
         elif args.operation == "filter":
             debug.log_info(f'Applying <filter> to {file}')
-            processor.filter(args.y, args.sample_rate, args.filter_frequency, args.filter_type)
+            processor.filter(args.y, args.sample_rate, args.filter_frequency, btype=args.filter_type)
         elif args.operation == "norm":
             debug.log_info(f'<Normalising> {file}')
             processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode) 
@@ -115,6 +118,7 @@ def main(args, revert=None):
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
                 utils.extract_metadata(file, args)
+        print()
             
         args.n_fft = n_fft
         args.hop_size = hop_size
@@ -123,6 +127,17 @@ def main(args, revert=None):
         args.n_mels = n_mels
         
     debug.log_done(f'<{args.operation}>')
+    if len(warnings) > 0:
+        debug.log_warning(f'Finished with <{len(warnings)} warning(s)>:')
+        for k in warnings.keys():
+            for w in warnings[k]:
+                debug.log_warning(f'{k}: {w.message}. <Line {w.lineno} in file:> {w.filename}')
+            
+    if len(errors) > 0:
+        debug.log_error(f'Finished with <{len(errors)} error(s)>:')
+        for k in errors.keys():
+            for e in errors[k]:
+                debug.log_error(f'{k}: <{e}>')
  
 def load_files(input):
     files = []
