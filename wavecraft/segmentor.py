@@ -69,7 +69,7 @@ class Segmentor:
                 end_time = f'{end_time:.6f}'
                 file.write(f'{start_time}\t{end_time}\n')
         
-    def segment_using_txt(self, audio_path, txt_path, output_folder, file_format):
+    def segment_using_txt(self, audio_path, txt_path, output_folder):
         
         y, sr = librosa.load(audio_path, sr=None)
 
@@ -87,7 +87,7 @@ class Segmentor:
                 segment = y[start_sample:end_sample]
 
                 # Adding fade-in and fade-out effects
-                segment = utils.fade_io(segment, sr, fade_duration=self.args.fade_duration)
+                segment = self.processor.fade_io(segment, sr, fade_in=self.args.fade_in, fade_out=self.args.fade_out, curve_type=self.args.curve_type)
                 segment_path = os.path.join(output_folder, f"segment_{i}.wav")
                 sf.write(segment_path, segment, sr, format='WAV', subtype='FLOAT')
                 
@@ -108,7 +108,7 @@ class Segmentor:
         if self.args.segmentation_method == 'text':
             if(not self.args.input_text):
                 self.args.input_text = os.path.splitext(self.args.input)[0] + '.txt'
-            self.segment_using_txt(self.args.input, self.args.input_text, self.args.output_directory, self.args.file_format)
+            self.segment_using_txt(self.args.input, self.args.input_text, self.args.output_directory)
         else:
             os.makedirs(self.args.output_directory, exist_ok=True)
             if user_input.lower() == '1':
@@ -118,7 +118,7 @@ class Segmentor:
 
 
         if self.args.save_txt:
-            self.save_segments_as_txt(segments, self.args.output_directory, self.args.sr)
+            self.save_segments_as_txt(segments)
             
 
     
