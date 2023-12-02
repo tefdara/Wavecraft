@@ -1,9 +1,13 @@
 #!/usr/bin/env python3.9
 
-import asyncio, yaml, sys, os, shutil
+import os
+import sys
+import re
+import asyncio
+import shutil
+import yaml
 import numpy as np
 import pandas as pd
-import re
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
 from . import utils
@@ -297,7 +301,7 @@ class ProxiMetor:
                     if not os.path.exists(os.path.join(analysis_folder, analysis_file)):
                         shutil.copy2(analysis_file_path, analysis_folder)
                 else:
-                    debug.log_error(f'File {sound} does not exist')
+                    debug.log_error(f'File {sound} does not exist', False)
                     break
 
                 await asyncio.sleep(0.005)  # just to mimic some delay

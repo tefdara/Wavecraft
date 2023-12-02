@@ -1,10 +1,9 @@
-import sys
 import warnings
-from warnings import catch_warnings
-import librosa
-import numpy as np
 import os
 import json
+from warnings import catch_warnings
+import numpy as np
+import librosa
 from sklearn.decomposition import PCA
 from .debug import Debug as debug
 

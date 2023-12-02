@@ -1,11 +1,30 @@
-import os, sys, librosa
-import soundfile as sf
-from . import utils
+import os
+import sys
 import asyncio
-from wavecraft.debug import Debug as debug
+import librosa
+import soundfile as sf
 from wavecraft.debug import colors
+from wavecraft.debug import Debug as debug
+from . import utils
 
 class Segmentor:
+    """
+    Class representing a segmentor for audio files.
+
+    Args:
+        args: An object containing the arguments for segmenting audio.
+
+    Attributes:
+        args: An object containing the arguments for segmenting audio.
+        processor: An instance of the Processor class for audio processing.
+        base_segment_path: The base path for saving the segmented audio files.
+
+    Methods:
+        render_segments: Renders the segments of the audio file.
+        save_segments_as_txt: Saves the segments as a text file.
+        segment_using_txt: Segments the audio file using a text file.
+        main: The main method for segmenting audio based on the chosen segmentation method.
+    """
     def __init__(self, args):
         self.args = args
         from .processor import Processor
@@ -14,6 +33,15 @@ class Segmentor:
         self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input).split('.')[0])
             
     def render_segments(self, segments):
+        """
+        Renders the segments of the audio file.
+
+        Args:
+            segments: A list of segment indices.
+
+        Returns:
+            None
+        """
         debug.log_info(f'Rendering segments...')
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
@@ -57,6 +85,15 @@ class Segmentor:
         debug.log_done(f'Exported {count} segments.')
 
     def save_segments_as_txt(self, onsets):
+        """
+        Saves the segments as a text file.
+
+        Args:
+            onsets: A list of segment onset indices.
+
+        Returns:
+            None
+        """
         debug.log_info(f'Saving segments as text file to {self.args.output_directory}...')
         text_file_path = self.base_segment_path + '_segments.txt'
         with open (text_file_path, 'w') as file:
@@ -70,7 +107,17 @@ class Segmentor:
                 file.write(f'{start_time}\t{end_time}\n')
         
     def segment_using_txt(self, audio_path, txt_path, output_folder):
-        
+        """
+        Segments the audio file using a text file.
+
+        Args:
+            audio_path: The path to the audio file.
+            txt_path: The path to the text file containing segment information.
+            output_folder: The folder to save the segmented audio files.
+
+        Returns:
+            None
+        """
         y, sr = librosa.load(audio_path, sr=None)
 
         with open(txt_path, 'r') as file:
@@ -92,6 +139,12 @@ class Segmentor:
                 sf.write(segment_path, segment, sr, format='WAV', subtype='FLOAT')
                 
     def main(self):
+        """
+        The main method for segmenting audio based on the chosen segmentation method.
+
+        Returns:
+            None
+        """
         if self.args.segmentation_method == 'onset':
             from .onset_detector import OnsetDetector
             detector = OnsetDetector(self.args)
