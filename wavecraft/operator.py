@@ -7,7 +7,8 @@ from .debug import Debug as debug
 from .beat_detector import BeatDetector
 from .decomposer import Decomposer
 from .proxi_metor import ProxiMetor
-from . import utils 
+from . import utils
+from . import metadata
 
 
 def main(args, revert=None):
@@ -47,7 +48,7 @@ def main(args, revert=None):
             try:
                 if process:
                     args.y, args.sample_rate = sf.read(file, dtype='float32')
-                    args.meta_data = utils.extract_metadata(file)
+                    args.meta_data = metadata.extract_metadata(file)
                     args.output = args.input
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
@@ -112,10 +113,10 @@ def main(args, revert=None):
                 else:
                     debug.log_error('No metadata file provided!')
                     sys.exit()
-                utils.write_metadata(file, args.meta)
+                metadata.write_metadata(file, args.meta)
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
-                utils.extract_metadata(file)
+                metadata.extract_metadata(file)
         print()
             
         args.n_fft = n_fft

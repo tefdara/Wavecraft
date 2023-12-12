@@ -1,9 +1,12 @@
-import os, time, librosa
-import numpy as np 
-import subprocess, tempfile, json
+
 import threading
-from .debug import Debug as debug, colors
+import json
+import os
+import time
+import librosa
+import numpy as np
 import sounddevice as sd
+from .debug import Debug as debug, colors
 
 
 #######################
@@ -23,126 +26,6 @@ def compute_spectrogram(y, sr, spec_type, n_fft, hop_length, n_mels, fmin):
     else:
         raise ValueError(f"Unsupported spec_type: {spec_type}")
 
-#######################
-# Metadata
-#######################
-def concat_metadata(meta_data, craft_data):
-        # print (meta_data)
-    if meta_data is None:
-        meta_data = ''
-        meta_data+=str(craft_data)
-    else:
-        # check if the values are the same
-        for line in craft_data.splitlines():
-            if line in meta_data:
-                # check if the values are the same
-                if line.split(':')[1].strip() == meta_data.split(':')[1].strip():
-                    continue
-                else:
-                    # if the values are different then replace the old value with the new one
-                    meta_data = meta_data.replace(line, '')
-                    debug.log_warning(f'Overwriting metadata {line}...')
-                    meta_data+=str(line)
-            else:
-                if line != craft_data.splitlines()[-1]:
-                    meta_data+=str(line)+'\n'
-                else:
-                    meta_data+=str(line)
-    return meta_data
-
-def extract_metadata(input_file):
-    # this command will extract the comment metadata from the input file
-    # -show_entries format_tags=comment will show the comment metadata
-    # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
-    command = [
-        'ffprobe',  input_file, '-v', 'error', '-show_entries', 'format_tags=comment', '-of', 'default=noprint_wrappers=1:nokey=1',
-    ]
-    output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
-    if 'not found' in output:
-        debug.log_error('ffmpeg is not installed. Please install it if you want to copy the metadata over.')
-        return None
-    
-    return output
-    
-def generate_metadata(input_file, args):
-    source_file_name = os.path.basename(input_file)
-    creation_time = os.stat(input_file)
-    # convert the timestamp to a human readable format
-    creation_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(creation_time.st_ctime))
-    command = [
-        'ffprobe',  input_file, '-v', 'error', '-show_entries', 'stream=sample_rate,channels,bits_per_raw_sample', '-of', 'default=noprint_wrappers=1:nokey=1'
-    ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
-    output, _ = process.communicate()
-    
-    source_metadata = {}
-    source_metadata['source_file_name'] = source_file_name
-    source_metadata['source_creation_time'] = creation_time
-    source_metadata['source_sample_rate'] = output.splitlines()[0]
-    source_metadata['source_channels'] = output.splitlines()[1]
-    source_metadata['source_bit_depth'] = output.splitlines()[2]
-    segmentation_metadata = {}
-    segmentation_metadata['seg_method'] = args.segmentation_method
-    if(args.segmentation_method == 'onset'):
-        segmentation_metadata['seg_onset_envelope'] = args.onset_envelope
-    segmentation_metadata['seg_normalise_mode'] = args.normalisation_mode
-    segmentation_metadata['seg_normalise_level'] = args.normalisation_level
-    segmentation_metadata['seg_fade_in_duration'] = args.fade_in
-    segmentation_metadata['seg_fade_out_duration'] = args.fade_out
-    segmentation_metadata['seg_fade_curve'] = args.curve_type
-    segmentation_metadata['seg_filter_frequency'] = args.filter_frequency
-    segmentation_metadata['seg_filter_type'] = args.filter_type + 'pass'
-    segmentation_metadata['seg_onset_threshold'] = args.onset_threshold
-    segmentation_metadata['seg_hop_size'] = args.hop_size
-    segmentation_metadata['seg_n_fft'] = args.n_fft
-    segmentation_metadata['seg_source_separation'] = args.source_separation
-
-    # convert to string and
-    source_metadata = '\n'.join([f'{k}:{v}' for k, v in source_metadata.items()])
-    segmentation_metadata = '\n'.join([f'{k}:{v}' for k, v in segmentation_metadata.items()])
-    craft_data = source_metadata + segmentation_metadata
-    
-    prev_metadata = extract_metadata(input_file)
-    final_metadata = concat_metadata(prev_metadata, craft_data)
-    
-    return final_metadata
-
-def write_metadata(input_file, comment):
-    if input_file.endswith('.json'):
-        return
-    if isinstance(comment, list):
-        # convert to a string
-        comment = '\n'.join(comment)
-    elif isinstance(comment, dict):
-        # convert to a string
-        comment = '\n'.join([f'{k} : {v}' for k, v in comment.items()])
-    comment = comment.replace(',', '')
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-        command = [
-            'ffmpeg', '-v', 'quiet', '-y', '-i', input_file, '-metadata', f'comment={comment}', '-codec', 'copy', tmp_file.name
-        ]
-        subprocess.run(command)
-        # Rename the temporary file to the original file
-        os.replace(tmp_file.name, input_file)
-
-def export_metadata(data, output_path, data_type='metadata'):
-    data = data.replace('\n', ',')
-    data_dict = {}
-    data = data.split(',')
-    for item in data:
-        item = item.split(':')
-        if len(item) >= 2:
-            data_dict[item[0].strip()] = item[1].strip()
-        else:
-            data_dict[item[0].strip()] = ''
-    output_file = output_path+f'_{data_type}.json'
-    if os.path.exists(output_file):
-        debug.log_warning(f'Overwriting JSON metadata {os.path.basename(output_file)}...')
-    else:
-        debug.log_info(f'Exporting JSON metadata {os.path.basename(output_file)}...')
-    with open(output_file, 'w') as file:
-        json.dump(data_dict, file, indent=4)
-        
 #######################
 # Maths
 #######################    

@@ -1,4 +1,3 @@
-import re
 import librosa
 import soundfile as sf
 import numpy as np
@@ -8,7 +7,9 @@ from pyloudnorm import Meter, normalize
 import sounddevice as sd
 from .debug import Debug as debug
 from .debug import colors
-from .utils import write_metadata, compute_curve
+from .utils import compute_curve
+from .metadata import write_metadata
+
 
 
 def mode_handler(func):
