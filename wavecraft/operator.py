@@ -1,5 +1,11 @@
-import os, sys, asyncio
-import librosa, soundfile as sf
+"""
+Operator module for WaveCraft. This module contains the main function for the WaveCraft CLI.
+"""
+import os
+import sys
+import asyncio
+import soundfile as sf
+import librosa
 from .segmentor import Segmentor
 from .feature_extractor import Extractor
 from .onset_detector import OnsetDetector
@@ -10,9 +16,17 @@ from .proxi_metor import ProxiMetor
 from . import utils
 from . import metadata
 
-
 def main(args, revert=None):
-    
+    """
+    Main function that performs various operations on audio files based on the provided arguments.
+
+    Args:
+        args (argparse.Namespace): The command-line arguments.
+        revert (Optional[str]): The revert option.
+
+    Returns:
+        None
+    """
     utils.progress(args.operation)
     if args.operation == "proxim":
         debug.log_info('Calculating <proximity metric>')
@@ -25,16 +39,18 @@ def main(args, revert=None):
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
-    window_length = args.window_length = 384 # for use with rythm features, otherwise window length = n_fft
+    # for use with rythm features, otherwise window length = n_fft
+    window_length = args.window_length = 384 
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
-    
+
     debug.log_info('Loading...')
     files = load_files(args.input)
-    
+
     warnings = {}
     errors = {}
-    
+    meta = None
+
     if process:
         batch = True
         if len(files) == 1:
@@ -48,7 +64,7 @@ def main(args, revert=None):
             try:
                 if process:
                     args.y, args.sample_rate = sf.read(file, dtype='float32')
-                    args.meta_data = metadata.extract_metadata(file)
+                    args.meta_data = metadata.generate_metadata(file, args)
                     args.output = args.input
                 else:
                     args.y=librosa.load(file, sr=args.sample_rate)[0]
@@ -119,15 +135,14 @@ def main(args, revert=None):
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
                 metadata.extract_metadata(file)
-
-        meta = metadata.extract_metadata(file)
-        print()
+                
+        print("⠠⠙⠠⠕⠠⠝⠠⠑")
         args.n_fft = n_fft
         args.hop_size = hop_size
         args.window_length = window_length
         args.n_bins = n_bins
         args.n_mels = n_mels
-        
+
     debug.log_done(f'<{args.operation}>')
     if len(warnings) > 0:
         debug.log_warning(f'Finished with <{len(warnings)} warning(s)>:')

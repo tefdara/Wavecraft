@@ -3,6 +3,7 @@ This module contains functions for extracting, generating, and writing metadata 
 """
 import os
 import subprocess
+import sys
 import tempfile
 import json
 import time
@@ -64,20 +65,20 @@ def generate_metadata(input_file, args):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
     output, _ = process.communicate()
 
-    base_data = {}
-    base_data['wavecraft_operation'] = args.operation
-    base_data['source_file_name'] = source_file_name
-    base_data['source_creation_time'] = creation_time
-    base_data['source_sample_rate'] = output.splitlines()[0]
-    base_data['source_channels'] = output.splitlines()[1]
-    base_data['source_bit_depth'] = output.splitlines()[2]
-    # segmentation_metadata = generate_segmentation_metadata(args)
+    base_data = {
+        'wavecraft_version': '0.1.0',
+        'wavecraft_operation': args.operation,
+        'source_file_name': source_file_name,
+        'source_creation_time': creation_time,
+        'source_sample_rate': output.splitlines()[0],
+        'source_channels': output.splitlines()[1],
+        'source_bit_depth': output.splitlines()[2]
+    }
 
+    base_data = _stringify_dict(base_data)
     craft_data = _get_craft_metadata(args)
-    base_data = '\n'.join([f'{k}:{v}' for k, v in base_data.items()])
-    # segmentation_metadata = '\n'.join([f'{k}:{v}' for k, v in segmentation_metadata.items()])
     craft_data = base_data + craft_data
-
+    
     prev_metadata = extract_metadata(input_file)
     final_metadata = _concat_metadata(prev_metadata, craft_data)
 
@@ -89,21 +90,24 @@ def write_metadata(input_file, comment):
 
     Args:
         input_file (str): The path to the input audio file.
-        comment (str, list, dict): The metadata comment to be written. If it is a list, the elements will be joined with newline characters.
+        comment (str, list, dict): The metadata comment to be written. If it is a list, 
+            the elements will be joined with newline characters.
             If it is a dictionary, the key-value pairs will be joined with newline characters.
 
     Returns:
         None
     """
-
+        
     if input_file.endswith('.json'):
+        debug.log_warning('Cannot write metadata to a JSON file, skipping...')
         return
     if isinstance(comment, list):
         comment = '\n'.join(comment)
     elif isinstance(comment, dict):
         comment = '\n'.join([f'{k} : {v}' for k, v in comment.items()])
-
+        
     comment = comment.replace(',', '')
+    
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
         command = [
             'ffmpeg', '-v', 'quiet', '-y', '-i', input_file, '-metadata', f'comment={comment}', 
@@ -113,18 +117,25 @@ def write_metadata(input_file, comment):
         # Rename the temporary file to the original file
         os.replace(tmp_file.name, input_file)
 
-def export_metadata(data, output_path, data_type='metadata'):
+def export_metadata(data, output_path, suffix='metadata'):
     """
     Export metadata to a JSON file.
 
     Args:
         data (str): The metadata string to be exported.
         output_path (str): The path where the JSON file will be saved.
-        data_type (str, optional): The type of data being exported. Defaults to 'metadata'.
+        suffix (str): The suffix to be appended to the JSON file name.
 
     Returns:
         None
     """
+
+    meta_dir = os.path.dirname(output_path) + '/wavecraft_metadata'
+    if not os.path.exists(meta_dir):
+        os.makedirs(meta_dir)
+        
+    output_file = os.path.join(meta_dir, os.path.basename(output_path) + f'_{suffix}.json')
+
     data = data.replace('\n', ',')
     data_dict = {}
     data = data.split(',')
@@ -134,18 +145,19 @@ def export_metadata(data, output_path, data_type='metadata'):
             data_dict[item[0].strip()] = item[1].strip()
         else:
             data_dict[item[0].strip()] = ''
-    output_file = output_path+f'_{data_type}.json'
+    # output_file = meta_dir+f'_{suffix}.json'
     if os.path.exists(output_file):
         debug.log_warning(f'Overwriting JSON metadata {os.path.basename(output_file)}...')
     else:
         debug.log_info(f'Exporting JSON metadata {os.path.basename(output_file)}...')
-    with open(output_file, 'w') as file:
+    with open(output_file, 'w', encoding='utf-8') as file:
         json.dump(data_dict, file, indent=4)
 
 
 #######################
 # Private functions
-#######################        
+#######################
+
 def _get_craft_metadata(args):
 
     normalization_metadata = _stringify_dict(_generate_normalization_metadata(args))
@@ -226,7 +238,7 @@ def _concat_metadata(meta_data, craft_data):
                 else:
                     # if the values are different then replace the old value with the new one
                     meta_data = meta_data.replace(line, '')
-                    debug.log_warning(f'Overwriting metadata {line}...')
+                    debug.log_warning(f'Overwriting metadata: {line}')
                     meta_data+=str(line)
             else:
                 if line != craft_data.splitlines()[-1]:

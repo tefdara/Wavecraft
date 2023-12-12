@@ -1,14 +1,19 @@
-import librosa
+"""
+This module contains the Processor class, responsible for applying different 
+DSP operaions to the audio signal.
+"""
+import os
+import sys
 import soundfile as sf
 import numpy as np
-import os, sys
 from scipy.signal import butter, filtfilt
 from pyloudnorm import Meter, normalize
+import librosa
 import sounddevice as sd
 from .debug import Debug as debug
 from .debug import colors
 from .utils import compute_curve
-from .metadata import write_metadata
+from .metadata import write_metadata, export_metadata
 
 
 def mode_handler(func):
@@ -63,6 +68,7 @@ class Processor:
         self.args = args
         self.mode = mode
         self.batch = batch
+        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0]
         if args is None:
             self.args = type("", (), {})()
             self.args.input = " "
@@ -71,10 +77,12 @@ class Processor:
             self.args.filter_frequency = 40
             self.args.fade_in = 30
             self.args.fade_out = 30
+            
 
     def _render(self, y, file):
         sf.write(file, y, self.args.sample_rate, format="WAV", subtype="PCM_24")
         write_metadata(file, self.args.meta_data)
+        export_metadata(self.args.meta_data, self.args.output_directory, suffix="metadata")
 
     #############################################
     # Fade

@@ -5,7 +5,7 @@ import librosa
 import soundfile as sf
 from wavecraft.debug import colors
 from wavecraft.debug import Debug as debug
-from . import utils
+from . import metadata
 
 class Segmentor:
     """
@@ -51,7 +51,7 @@ class Segmentor:
         # backtrack
         segment_samps = segment_samps - int(self.args.backtrack_length * sr_m / 1000)
         
-        # meta_data = utils.generate_metadata(self.args.input, self.args)
+        meta = metadata.generate_metadata(self.args.input, self.args)
         
         count = 0
         for i, segment_samp in enumerate(segment_samps):
@@ -81,9 +81,9 @@ class Segmentor:
             short_path = os.path.basename(segment_path)
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             debug.log_info(f'Saving segment <{count}> to {short_path}. <length: {segment_length}s>')
-            # utils.write_metadata(segment_path, meta_data)
+            metadata.write_metadata(segment_path, meta)
 
-        # utils.export_metadata(meta_data, self.base_segment_path, data_type='seg_metadata')
+        metadata.export_metadata(meta, self.base_segment_path, suffix='seg_metadata')
                 
         
         debug.log_done(f'Exported {count} segments.')
