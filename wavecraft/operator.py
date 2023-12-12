@@ -64,7 +64,7 @@ def main(args, revert=None):
                 debug.log_info('Adjusting analysis resolution for short signal...')
                 args.n_fft, args.hop_size, args.window_length, args.n_bins, args.n_mels = utils.adjust_anal_res(args)
             args.num_frames = int(args.num_samples / args.hop_size)
-        
+
         if args.operation == "segment":
             debug.log_info(f'<Segmenting> {file}')
             craft = Segmentor(args)
@@ -87,28 +87,30 @@ def main(args, revert=None):
             asyncio.run(craft.main())
         elif args.operation == "filter":
             debug.log_info(f'Applying <filter> to {file}')
-            processor.filter(args.y, args.sample_rate, args.filter_frequency, btype=args.filter_type)
+            processor.filter(args.y, args.sample_rate, args.filter_frequency,
+                             btype=args.filter_type)
         elif args.operation == "norm":
             debug.log_info(f'<Normalising> {file}')
-            processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level, args.normalisation_mode) 
+            processor.normalise_audio(args.y, args.sample_rate, args.normalisation_level,
+                                      args.normalisation_mode)
         elif args.operation == "fade":
             debug.log_info(f'Applying> <fade to {file}')
-            processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
+            processor.fade_io(args.y, args.sample_rate, args.fade_in,
+                              args.fade_out, args.curve_type)
         elif args.operation == "trim":
             debug.log_info(f'<Trimming> {file}')
             processor.trim()
-            # processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
         elif args.operation == "pan":
             debug.log_info(f'<Panning> {file}')
             processor.pan(args.y, args.pan_amount, args.mono)
         elif args.operation == "split":
             debug.log_info(f'<Splitting> {file}')
             processor.split(args.y, args.sample_rate, args.split_points)
-            
+
         else:
             if args.operation == "wmeta":
                 debug.log_info('Writing metadata')
-                if(args.meta_file):
+                if args.meta_file:
                     args.meta = utils.load_json(args.meta_file)
                 else:
                     debug.log_error('No metadata file provided!')
@@ -117,7 +119,7 @@ def main(args, revert=None):
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
                 metadata.extract_metadata(file)
-        
+
         meta = metadata.extract_metadata(file)
         print()
         args.n_fft = n_fft

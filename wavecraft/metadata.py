@@ -1,3 +1,6 @@
+"""
+This module contains functions for extracting, generating, and writing metadata to audio files.
+"""
 import os
 import subprocess
 import tempfile
@@ -11,6 +14,19 @@ from .debug import Debug as debug
 #######################
 
 def extract_metadata(input_file):
+    """
+    Extracts the comment metadata from an audio file using ffprobe.
+
+    Args:
+        input_file (str): The path to the input audio file.
+
+    Returns:
+        str: The extracted comment metadata.
+
+    Raises:
+        None
+
+    """
     # -show_entries format_tags=comment will show the comment metadata
     # -of default=noprint_wrappers=1:nokey=1 will remove the wrapper and the key from the output
     command = [
@@ -24,8 +40,18 @@ def extract_metadata(input_file):
         return None
 
     return output
-   
+
 def generate_metadata(input_file, args):
+    """
+    Generate metadata for the given input file.
+
+    Args:
+        input_file (str): The path to the input file.
+        args (Namespace): The command line arguments.
+
+    Returns:
+        str: The final metadata string.
+    """
     source_file_name = os.path.basename(input_file)
     creation_time = os.stat(input_file)
     # convert timestamp to a human readable format
@@ -58,6 +84,17 @@ def generate_metadata(input_file, args):
     return final_metadata
 
 def write_metadata(input_file, comment):
+    """
+    Writes metadata to an audio file.
+
+    Args:
+        input_file (str): The path to the input audio file.
+        comment (str, list, dict): The metadata comment to be written. If it is a list, the elements will be joined with newline characters.
+            If it is a dictionary, the key-value pairs will be joined with newline characters.
+
+    Returns:
+        None
+    """
 
     if input_file.endswith('.json'):
         return
@@ -77,6 +114,17 @@ def write_metadata(input_file, comment):
         os.replace(tmp_file.name, input_file)
 
 def export_metadata(data, output_path, data_type='metadata'):
+    """
+    Export metadata to a JSON file.
+
+    Args:
+        data (str): The metadata string to be exported.
+        output_path (str): The path where the JSON file will be saved.
+        data_type (str, optional): The type of data being exported. Defaults to 'metadata'.
+
+    Returns:
+        None
+    """
     data = data.replace('\n', ',')
     data_dict = {}
     data = data.split(',')
