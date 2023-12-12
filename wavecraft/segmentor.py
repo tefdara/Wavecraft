@@ -42,7 +42,7 @@ class Segmentor:
         Returns:
             None
         """
-        debug.log_info(f'Rendering segments...')
+        debug.log_info('Rendering segments...')
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
@@ -52,14 +52,16 @@ class Segmentor:
         meta_data = utils.generate_metadata(self.args.input, self.args)
         
         count = 0
-        for i in range(len(segment_samps)):
+        for i, segment_samp in enumerate(segment_samps):
+            
             if i == len(segment_samps) - 1:
                 # last segment
-                start_sample = segment_samps[i]
+                start_sample = segment_samp
                 end_sample = len(y_m)
             else:
-                start_sample = segment_samps[i]
+                start_sample = segment_samp
                 end_sample = segment_samps[i + 1]
+                
             segment = y_m[start_sample:end_sample]
             segment = self.processor.fade_io(segment, sr_m, fade_out=60, curve_type=self.args.curve_type)
             segment = self.processor.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)

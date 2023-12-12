@@ -98,10 +98,7 @@ def main(args, revert=None):
             processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
         elif args.operation == "pan":
             debug.log_info(f'<Panning> {file}')
-            processor.pan(args.y, args.sample_rate, args.pan_value)
-        elif args.operation == "mono":
-            debug.log_info(f'Converting {file} to <mono>')
-            processor.mono(args.y, args.sample_rate)             
+            processor.pan(args.y, args.pan_amount, args.mono)
         elif args.operation == "split":
             debug.log_info(f'<Splitting> {file}')
             processor.split(args.y, args.sample_rate, args.split_points)
@@ -139,28 +136,28 @@ def main(args, revert=None):
             for e in errors[k]:
                 debug.log_error(f'{k}: <{e}>')
  
-def load_files(input):
+def load_files(input_file):
     files = []
-    if input == None or input == '':
+    if input_file is None or input_file == '':
         debug.log_error('No input file or directory provided!')
         sys.exit()
-    if input == '.':
-        input = os.getcwd()
+    if input_file == '.':
+        input_file = os.getcwd()
     # check if dir is home dir
-    if input == os.path.expanduser('~'):
+    if input_file == os.path.expanduser('~'):
         debug.log_warning('You are about to process your home directory. Are you sure you want to continue?')
-        user_input = input(f'\n1) Yes\n2) No\n')
+        user_input = input_file('\n1) Yes\n2) No\n')
         if user_input.lower() == '2':
             sys.exit(1)           
-    if os.path.isdir(input):
-        input_dir = input
-        for file in os.listdir(input):
+    if os.path.isdir(input_file):
+        input_dir = input_file
+        for file in os.listdir(input_file):
             if utils.check_format(file):
                 files.append(os.path.join(input_dir, file))
-    # single file              
+    # single file
     else:
-        if utils.check_format(input):
-            files.append(input)
+        if utils.check_format(input_file):
+            files.append(input_file)
     if len(files) == 0:
         debug.log_error('No valid files found!')
         sys.exit()

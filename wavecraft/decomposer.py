@@ -1,12 +1,11 @@
 import sys
 import os
-import librosa
 import asyncio
-import traceback
+import soundfile as sf
+import librosa
 import numpy as np
 import sklearn.decomposition
 from .debug import Debug as debug
-import soundfile as sf
 from . import utils
 
 class Decomposer:
@@ -25,7 +24,7 @@ class Decomposer:
         if args.sklearn or args.nn_filter:
             if args.source_separation is not None:
                 debug.log_error('Cannot use sklearn with source separation.')
-            if args.sklearn:self.method = 'sklearn'
+            if args.sklearn: self.method = 'sklearn'
             if args.nn_filter:
                 self.method = 'nn_filter'
         if not args.sklearn and not args.nn_filter:
@@ -78,13 +77,13 @@ class Decomposer:
             scomps, sacts, sphase = await self._decompose_sk(self.args.y, n_components=self.args.n_components)
             debug.log_info(f'Decomposed the signal into <{self.args.n_components} components>, using <sklearn>.')
             if not self.render:
-                debug.log_info(f'Render not requested. Returning components...')
+                debug.log_info('Render not requested. Returning components...')
                 return
             debug.log_info(f'Rendering components to {self.output_path}...')
             self.render_components(scomps, sacts, self.args.n_components, sphase)
         
         elif self.method == 'nn_filter':
-            debug.log_info(f'Filtering the signal using <nn_filter>...')
+            debug.log_info('Filtering the signal using <nn_filter>...')
             await self._decompose_nn_filter(self.args.y)
 
     async def _decompose_n(self, y, n_components=4, spectogram=None):
@@ -118,7 +117,7 @@ class Decomposer:
         S_filtered = librosa.decompose.nn_filter(S, aggregate=np.median, metric='cosine')
         y_filtered = librosa.feature.inverse.mel_to_audio(S_filtered, sr=self.args.sample_rate)
         
-        if utils.preview_audio(y_filtered, self.args.sample_rate) == True:
+        if utils.preview_audio(y_filtered, self.args.sample_rate) is True:
             debug.log_info(f'Rendering <filtered> signal to {self.output_path}...')
             self.render_core(y_filtered, self.args.sample_rate, os.path.join(self.output_path, self.input_file_name + '_filtered.wav'))
         
@@ -143,17 +142,17 @@ class Decomposer:
     def render_hpss(self, y, sr, render_path, type='harmonic'):
         self.render_core(y, sr, os.path.join(render_path, self.input_file_name + '_' + type + '.wav'))
         
-    def render_core(self, y, sr, output_file, normalise=True, highPassFilter=True):
+    def render_core(self, y, sr, output_file, normalise=True, high_pass_filter=True):
         dir = os.path.dirname(output_file)
         if not os.path.exists(dir):
             os.makedirs(dir)
             
-        y = self.process(y, sr, normalise, highPassFilter)
+        y = self.process(y, sr, normalise, high_pass_filter)
         
         sf.write(output_file, y, sr)
         
-    def process(self, y, sr, normalise=True, highPassFilter=True):
-        if highPassFilter:
+    def process(self, y, sr, normalise=True, high_pass_filter=True):
+        if high_pass_filter:
             if self.args.filter_frequency == 40:
                 self.args.filter_frequency = 50
             y = self.processor.filter(y, sr, self.args.filter_frequency)
@@ -171,6 +170,6 @@ class Decomposer:
             asyncio.run(self.main())
         except Exception as e:
             debug.log_info(f'Error: {type(e).__name__}! {e}')
-            traceback.debug.log_info_exc()
+            # traceback.debug.log_info_exc()
             sys.exit(1)
             

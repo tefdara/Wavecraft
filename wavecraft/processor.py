@@ -1,3 +1,4 @@
+import re
 import librosa
 import soundfile as sf
 import numpy as np
@@ -312,8 +313,12 @@ class Processor:
         for file in os.listdir(input_dir):
             os.remove(os.path.join(input_dir, file))
     
-    @mode_handler        
-    def pan(self, y, pan, sr):
+    @mode_handler
+    def pan(self, y, pan, mono):
+        
+        if mono:
+            return self.mono_internal(y)
+        
         if len(y.shape) == 1:
             y = np.expand_dims(y, axis=1)
         assert (y.ndim == 2)
@@ -323,8 +328,8 @@ class Processor:
         right = np.sqrt(0.5 * (1 + pan))
         return np.hstack((left * y[:, 0:1], right * y[:, 1:2]))
     
-    @mode_handler
-    def mono(self, y, sr):
+
+    def mono_internal(self, y):
         if len(y.shape) == 1:
             return y
         else:
