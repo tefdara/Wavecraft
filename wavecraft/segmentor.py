@@ -64,7 +64,7 @@ class Segmentor:
                 
             segment = y_m[start_sample:end_sample]
             segment = self.processor.fade_io(segment, sr_m, fade_out=60, curve_type=self.args.curve_type)
-            segment = self.processor.trim_after_last_silence(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
+            segment = self.processor.trim_silence_tail(segment, sr_m, top_db=self.args.trim_silence, frame_length=self.args.n_fft, hop_length=self.args.hop_size)
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:

@@ -190,6 +190,13 @@ class Processor:
 #############################################
     
     @mode_handler
+    def trim(self):
+        if self.args.trim_range is not None:
+            return self._trim_range_interanl(self.args.y, self.args.sample_rate, self.args.trim_range, self.args.fade_in, self.args.fade_out, self.args.curve_type)
+        else:
+            return self._trim_silence_tails_interanl(self.args.y, self.args.sample_rate, self.args.trim_silence, self.args.n_fft, self.args.hop_size)
+        
+    @mode_handler
     def trim_ends(self, y, threshold=20, frame_length=2048, hop_length=512):
         if len(y.shape) == 1:
             yt, indices = librosa.effects.trim(y, top_db=threshold, frame_length=frame_length, hop_length=hop_length)
@@ -212,8 +219,8 @@ class Processor:
 
         else:
            debug.log_error("Invalid number of channels. Expected 1 or 2, got {}".format(y.shape[1]))
-    @mode_handler
-    def trim_range(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
+    
+    def _trim_range_interanl(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
         # e.g 0.1-0.5 means trim between 0.1 and 0.5 seconds
         # e.g 0.1- means trim after 0.1 seconds
         # e.g -0.5 means trim before 0.5 seconds
@@ -221,7 +228,7 @@ class Processor:
         start = int(float(range[0])*sr) if range[0] != '' else 0
         end = int(float(range[1])*sr) if range[1] != '' else len(y)
         if end < start or start < 0 or end > len(y):
-            debug.log_error(f'Invalid range! Skipping trim')
+            debug.log_error('Invalid range! Skipping trim')
             sys.exit(1)
             
         y_trimmed = np.concatenate((y[0:start], y[end:]))
@@ -229,7 +236,10 @@ class Processor:
         return y_trimmed
     
     @mode_handler
-    def trim_after_last_silence(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
+    def trim_range(self, y, sr, range, fade_in=25, fade_out=25, curve_type='exp'):
+        return self._trim_range_interanl(y, sr, range, fade_in, fade_out, curve_type=curve_type)
+    
+    def _trim_silence_tails_interanl(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
         """
         Trim audio after the last prolonged silence.
 
@@ -271,6 +281,10 @@ class Processor:
             return y_trimmed
 
         return y
+    
+    @mode_handler
+    def trim_silence_tail(self, y, sr, top_db=-70.0, frame_length=2048, hop_length=512):
+        return self._trim_silence_tails_interanl(y, sr, top_db, frame_length, hop_length)
     
     @mode_handler
     def random_crop(self, y, sr, duration):

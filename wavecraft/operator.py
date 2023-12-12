@@ -20,7 +20,7 @@ def main(args, revert=None):
         return
 
     dsp = args.operation not in ["wmeta", "info"]
-    process = args.operation not in ["segment", "extract", "onset", "beat", "decomp"]
+    process = args.operation not in ["segment", "extract", "onset", "beat", "decomp", "proxim"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
@@ -95,7 +95,8 @@ def main(args, revert=None):
             processor.fade_io(args.y, args.sample_rate, args.fade_in, args.fade_out, args.curve_type)  
         elif args.operation == "trim":
             debug.log_info(f'<Trimming> {file}')
-            processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
+            processor.trim()
+            # processor.trim_range(args.y, args.sample_rate, args.trim_range, args.fade_in, args.fade_out, args.curve_type)    
         elif args.operation == "pan":
             debug.log_info(f'<Panning> {file}')
             processor.pan(args.y, args.pan_amount, args.mono)

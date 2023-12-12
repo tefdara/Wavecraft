@@ -113,7 +113,7 @@ if __name__ == "__main__":
     # trim
     trim_group = parser.add_argument_group(title='Trim - trims the audio file. Either range or silence can be used. Defining -tr will disable silence trimming', description='operation -> trim')
     trim_group.add_argument("-tr", "--trim-range", type=str, default=None, help="Trim position range in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. -0.5).", required=False, metavar='')
-    trim_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -60 db.", required=False, metavar='')
+    trim_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -65 db.", required=False, metavar='')
 
     
     # split
