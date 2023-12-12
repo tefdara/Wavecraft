@@ -43,13 +43,15 @@ class Segmentor:
             None
         """
         debug.log_info('Rendering segments...')
+        
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
         segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
-        # backtrack 
+        
+        # backtrack
         segment_samps = segment_samps - int(self.args.backtrack_length * sr_m / 1000)
         
-        meta_data = utils.generate_metadata(self.args.input, self.args)
+        # meta_data = utils.generate_metadata(self.args.input, self.args)
         
         count = 0
         for i, segment_samp in enumerate(segment_samps):
@@ -79,9 +81,9 @@ class Segmentor:
             short_path = os.path.basename(segment_path)
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             debug.log_info(f'Saving segment <{count}> to {short_path}. <length: {segment_length}s>')
-            utils.write_metadata(segment_path, meta_data)
+            # utils.write_metadata(segment_path, meta_data)
 
-        utils.export_metadata(meta_data, self.base_segment_path, data_type='seg_metadata')
+        # utils.export_metadata(meta_data, self.base_segment_path, data_type='seg_metadata')
                 
         
         debug.log_done(f'Exported {count} segments.')

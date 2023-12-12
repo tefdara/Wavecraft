@@ -117,8 +117,9 @@ def main(args, revert=None):
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
                 metadata.extract_metadata(file)
+        
+        meta = metadata.extract_metadata(file)
         print()
-            
         args.n_fft = n_fft
         args.hop_size = hop_size
         args.window_length = window_length
