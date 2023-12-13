@@ -68,7 +68,7 @@ class Processor:
         self.args = args
         self.mode = mode
         self.batch = batch
-        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0]
+
         if args is None:
             self.args = type("", (), {})()
             self.args.input = " "
@@ -77,12 +77,13 @@ class Processor:
             self.args.filter_frequency = 40
             self.args.fade_in = 30
             self.args.fade_out = 30
-            
+
 
     def _render(self, y, file):
         sf.write(file, y, self.args.sample_rate, format="WAV", subtype="PCM_24")
         write_metadata(file, self.args.meta_data)
-        export_metadata(self.args.meta_data, self.args.output_directory, self.args.operation)
+        output = self.args.output_directory or os.path.splitext(self.args.input)[0]
+        export_metadata(self.args.meta_data, output, self.args.operation)
 
     #############################################
     # Fade

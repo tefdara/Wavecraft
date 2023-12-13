@@ -3,6 +3,7 @@ This module contains functions for extracting, generating, and writing metadata 
 """
 import os
 import subprocess
+import sys
 import tempfile
 import json
 import time
@@ -35,8 +36,7 @@ def extract_metadata(input_file):
     ]
     output = subprocess.check_output(command, stderr=subprocess.DEVNULL, universal_newlines=True)
     if 'not found' in output:
-        debug.log_error('ffmpeg is not installed. Please install it if you want to copy \
-                        the metadata over.')
+        debug.log_error('ffmpeg is not installed. Please install it if you want to copy the metadata over.')
         return None
 
     return output
@@ -128,13 +128,15 @@ def export_metadata(data, output_path, operation, suffix='metadata'):
     Returns:
         None
     """
-
+    output_path = os.path.realpath(output_path)
     meta_dir = os.path.dirname(output_path) + '/wavecraft_data'
+
     if not os.path.exists(meta_dir):
         os.makedirs(meta_dir)
 
     output_file = os.path.join(meta_dir, os.path.basename(output_path)
                                +f'_{operation}'+f'_{suffix}.json')
+
 
     data = data.replace('\n', ',')
     data_dict = {}
@@ -229,15 +231,13 @@ def _concat_metadata(meta_data, craft_data):
         meta_data = ''
         meta_data+=str(craft_data)
     else:
-        # check if the values are the same
         for line in craft_data.splitlines():
-            if line in meta_data:
-                # if the values are different then replace the old value with the new one??? 
-                if line.split(':')[1].strip() != meta_data.split(':')[1].strip():
-                    # meta_data = meta_data.replace(line, '')
-                    # meta_data+=str(line)
-                    debug.log_warning(f'Metadata for line: {line} has changed. \
-                                    Keeping both values...')
+            # if line in meta_data:
+            #     # if the values are different then replace the old value with the new one??? 
+            #     if line.split(':')[1].strip() != meta_data.split(':')[1].strip():
+            #         # meta_data = meta_data.replace(line, '')
+            #         # meta_data+=str(line)
+            #         debug.log_warning(f'Metadata for line: {line} has changed. Keeping both values...')
             if line != craft_data.splitlines()[-1]:
                 meta_data+=str(line)+'\n'
             else:

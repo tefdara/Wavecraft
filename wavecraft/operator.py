@@ -154,8 +154,20 @@ def main(args, revert=None):
         for k in errors.keys():
             for e in errors[k]:
                 debug.log_error(f'{k}: <{e}>')
- 
+
 def load_files(input_file):
+    """
+    Load audio files from a given input file or directory.
+
+    Args:
+        input_file (str): The path to the input file or directory.
+
+    Returns:
+        list: A list of valid audio file paths.
+
+    Raises:
+        SystemExit: If no valid files are found or if the input file or directory is invalid.
+    """
     files = []
     if input_file is None or input_file == '':
         debug.log_error('No input file or directory provided!')
