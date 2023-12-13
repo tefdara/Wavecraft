@@ -3,7 +3,6 @@ This module contains functions for extracting, generating, and writing metadata 
 """
 import os
 import subprocess
-import sys
 import tempfile
 import json
 import time
@@ -66,8 +65,9 @@ def generate_metadata(input_file, args):
     output, _ = process.communicate()
 
     base_data = {
+        '-----------------------------------------': '',
         'wavecraft_version': '0.1.0',
-        'wavecraft_operation': args.operation,
+        'operation': args.operation,
         'source_file_name': source_file_name,
         'source_creation_time': creation_time,
         'source_sample_rate': output.splitlines()[0],
@@ -114,10 +114,9 @@ def write_metadata(input_file, comment):
             '-codec', 'copy', tmp_file.name
         ]
         subprocess.run(command)
-        # Rename the temporary file to the original file
         os.replace(tmp_file.name, input_file)
 
-def export_metadata(data, output_path, suffix='metadata'):
+def export_metadata(data, output_path, operation, suffix='metadata'):
     """
     Export metadata to a JSON file.
 
@@ -130,11 +129,12 @@ def export_metadata(data, output_path, suffix='metadata'):
         None
     """
 
-    meta_dir = os.path.dirname(output_path) + '/wavecraft_metadata'
+    meta_dir = os.path.dirname(output_path) + '/wavecraft_data'
     if not os.path.exists(meta_dir):
         os.makedirs(meta_dir)
-        
-    output_file = os.path.join(meta_dir, os.path.basename(output_path) + f'_{suffix}.json')
+
+    output_file = os.path.join(meta_dir, os.path.basename(output_path)
+                               +f'_{operation}'+f'_{suffix}.json')
 
     data = data.replace('\n', ',')
     data_dict = {}
@@ -224,7 +224,7 @@ def _stringify_dict(d, new_line=True):
         return ', '.join([f'{k}:{v}' for k, v in d.items()])
 
 def _concat_metadata(meta_data, craft_data):
-        # print (meta_data)
+
     if meta_data is None:
         meta_data = ''
         meta_data+=str(craft_data)
@@ -232,19 +232,17 @@ def _concat_metadata(meta_data, craft_data):
         # check if the values are the same
         for line in craft_data.splitlines():
             if line in meta_data:
-                # check if the values are the same
-                if line.split(':')[1].strip() == meta_data.split(':')[1].strip():
-                    continue
-                else:
-                    # if the values are different then replace the old value with the new one
-                    meta_data = meta_data.replace(line, '')
-                    debug.log_warning(f'Overwriting metadata: {line}')
-                    meta_data+=str(line)
+                # if the values are different then replace the old value with the new one??? 
+                if line.split(':')[1].strip() != meta_data.split(':')[1].strip():
+                    # meta_data = meta_data.replace(line, '')
+                    # meta_data+=str(line)
+                    debug.log_warning(f'Metadata for line: {line} has changed. \
+                                    Keeping both values...')
+            if line != craft_data.splitlines()[-1]:
+                meta_data+=str(line)+'\n'
             else:
-                if line != craft_data.splitlines()[-1]:
-                    meta_data+=str(line)+'\n'
-                else:
-                    meta_data+=str(line)
+                meta_data+=str(line)
+                
     return meta_data
 
 def _join_metadata(meta_list):

@@ -40,7 +40,7 @@ def main(args, revert=None):
     n_fft = args.n_fft
     hop_size = args.hop_size
     # for use with rythm features, otherwise window length = n_fft
-    window_length = args.window_length = 384 
+    window_length = args.window_length = 384
     n_bins = args.n_bins = 84
     n_mels = args.n_mels = 128
 
@@ -49,7 +49,6 @@ def main(args, revert=None):
 
     warnings = {}
     errors = {}
-    meta = None
 
     if process:
         batch = True

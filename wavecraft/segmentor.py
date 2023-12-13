@@ -29,9 +29,11 @@ class Segmentor:
         self.args = args
         from .processor import Processor
         self.processor = Processor(args)
-        self.args.output_directory = self.args.output_directory or os.path.splitext(self.args.input)[0] + '_segments'
-        self.base_segment_path = os.path.join(self.args.output_directory, os.path.basename(self.args.input).split('.')[0])
-            
+        self.args.output_directory = self.args.output_directory or \
+                                    os.path.splitext(self.args.input)[0] + '_segments'
+        self.base_segment_path = os.path.join(self.args.output_directory,
+                                              os.path.basename(self.args.input).split('.')[0])
+
     def render_segments(self, segments):
         """
         Renders the segments of the audio file.
@@ -43,16 +45,18 @@ class Segmentor:
             None
         """
         debug.log_info('Rendering segments...')
-        
+
         y_m, sr_m = sf.read(self.args.input, dtype='float32')
-        segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate, hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+        segment_times = librosa.frames_to_time(segments, sr=self.args.sample_rate,
+                                               hop_length=self.args.hop_size, n_fft=self.args.n_fft)
+
         segment_samps = librosa.time_to_samples(segment_times, sr=sr_m)
-        
+
         # backtrack
         segment_samps = segment_samps - int(self.args.backtrack_length * sr_m / 1000)
-        
+
         meta = metadata.generate_metadata(self.args.input, self.args)
-        
+
         count = 0
         for i, segment_samp in enumerate(segment_samps):
             
@@ -70,22 +74,29 @@ class Segmentor:
             # skip segments that are too short
             segment_length = round(len(segment) / sr_m, 4)
             if segment_length < self.args.min_length:
-                debug.log_warning(f'Skipping segment {i+1} because it\'s too short: {segment_length}s')
-                continue 
+                debug.log_warning(f'Skipping segment {i+1} because \
+                                  it\'s too short: {segment_length}s')
+                continue
+
             count += 1
-            segment = self.processor.fade_io(segment, sr_m, curve_type=self.args.curve_type, fade_in=self.args.fade_in, fade_out=self.args.fade_out)
-            segment = self.processor.filter(segment, sr_m, self.args.filter_frequency, btype=self.args.filter_type)
-            segment = self.processor.normalise_audio(segment, sr_m, self.args.normalisation_level, self.args.normalisation_mode)
+            segment = self.processor.fade_io(segment, sr_m, curve_type=self.args.curve_type,
+                                             fade_in=self.args.fade_in, fade_out=self.args.fade_out)
+
+            segment = self.processor.filter(segment, sr_m,
+                                            self.args.filter_frequency, btype=self.args.filter_type)
+
+            segment = self.processor.normalise_audio(segment, sr_m, self.args.normalisation_level,
+                                                     self.args.normalisation_mode)
             segment_path = self.base_segment_path+f'_{count}.wav'
-            
+
             short_path = os.path.basename(segment_path)
             sf.write(segment_path, segment, sr_m, format='WAV', subtype='PCM_24')
             debug.log_info(f'Saving segment <{count}> to {short_path}. <length: {segment_length}s>')
             metadata.write_metadata(segment_path, meta)
 
-        metadata.export_metadata(meta, self.base_segment_path, suffix='seg_metadata')
-                
-        
+        metadata.export_metadata(meta, self.base_segment_path, self.args.operation)
+
+
         debug.log_done(f'Exported {count} segments.')
 
     def save_segments_as_txt(self, onsets):

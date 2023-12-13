@@ -82,7 +82,7 @@ class Processor:
     def _render(self, y, file):
         sf.write(file, y, self.args.sample_rate, format="WAV", subtype="PCM_24")
         write_metadata(file, self.args.meta_data)
-        export_metadata(self.args.meta_data, self.args.output_directory, suffix="metadata")
+        export_metadata(self.args.meta_data, self.args.output_directory, self.args.operation)
 
     #############################################
     # Fade
