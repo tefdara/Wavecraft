@@ -1,14 +1,14 @@
-# Wave Craft
+# Wavecraft
 
-Wave Craft is a Python-based tool for audio manipulation, segmentation and batch processing. It started as a unification of a lot of small bash and python tools I have made over time to make my life easier. However, it is slowly growing into a more comprehensive tool for audio processing. Wave Craft has a command-line interface for performing various operations on audio files. In its simplest form, it requires an operation name and an input file. The input can be a directory of files for batch processing. It can also take a text file as input for some operations. See the [usage](#usage) section for more details.
+Wavecraft is a Python-based tool for audio manipulation, segmentation and batch processing. It started as a unification of a lot of small bash and python tools I have made over time to make my life easier. However, it is slowly growing into a more comprehensive tool for audio processing. Wavecraft has a command-line interface for performing various operations on audio files. In its simplest form, it requires an operation name and an input file. The input can be a directory of files for batch processing. It can also take a text file as input for some operations. See the [usage](#usage) section for more details.
 
-Wave Craft is a work in progress. I'll be updating and expanding it in the coming months, years and... decades? I don't know. I'll be adding more operations and features if time permits. If you have any suggestions or feedback, please let me know.
+Wavecraft is a work in progress. I'll be updating and expanding it in the coming months, years and... decades? Pull the latest for updates and bug fixes. I'll be adding more operations and features if time permits. If you have any suggestions or feedback, please let me know.
 
 
 
 ## Dependencies
 
-`Wave Craft` requires the following modules:
+`Wavecraft` requires the following modules:
 
 - `Python` 3.6 or higher
 - `librosa`
@@ -44,14 +44,16 @@ Replace `operation_name` with the name of the operation you want to perform. The
 - `extract`: Extract features from an audio file.
 - `proxim`: Calculate proximity metrics for a dataset. It can find the most similar sounds in a dataset based on various metrics.
 - `decompose`: Decompose an audio file using various methods.
+- `beat`: Extract beats from an audio file.
+- `onset`: Extract onsets from an audio file.
 - `filter`: Apply filters to an audio files.
 - `fade`: Apply fades to an audio file.
 - `norm`: Normalise an audio file.
 - `wmetadata`: Write metadata to an audio file.
 - `trim`: Trim an audio file.
 - `split`: Split an audio file into smaller files.
-- `pan`: Pan an audio file.
-- `mono`: Convert an audio file to mono.
+- `pan`: Pan an audio file or convert a multichannel file to mono.
+
 
 
 For a detailed list of operations and their options, run:
@@ -62,7 +64,7 @@ For a detailed list of operations and their options, run:
 
 ## Examples
 
-Here are some examples of how to use `Wave Craft`:
+Here are some examples of how to use `Wavecraft`:
 
 ### Segment an audio file based on onsets / beats using different onset envelopes
 
@@ -147,9 +149,9 @@ numpy>=1.24.4
 ## Troubleshooting
 
 1. **pip not found**: Make sure `pip` is installed. You might need to install or update it.
-2. **requirements.txt not found**: Ensure that the `requirements.txt` file exists in the root directory of `Wave Craft`.
+2. **requirements.txt not found**: Ensure that the `requirements.txt` file exists in the root directory of `Wavecraft`.
 
 
 ## License
 
-`Wave Craft` is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
+`Wavecraft` is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
