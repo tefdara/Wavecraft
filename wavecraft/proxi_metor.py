@@ -5,7 +5,6 @@ import sys
 import re
 import asyncio
 import shutil
-import yaml
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -29,11 +28,11 @@ class ProxiMetor:
             
         self.ops = None
         self.base_path = './similar_files'
-        if(self.args.ops):
-            # Load the options yamle file from this directory
-            ops_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "metric_ops.yaml")
-            with open(ops_file, encoding='utf-8') as f:
-                self.ops = yaml.load(f, Loader=yaml.FullLoader)
+        # if(self.args.ops):
+        #     # Load the options yamle file from this directory
+        #     ops_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "metric_ops.yaml")
+        #     with open(ops_file, encoding='utf-8') as f:
+        #         self.ops = yaml.load(f, Loader=yaml.FullLoader)
             
     
     def expand_nested_columns(self, df):
