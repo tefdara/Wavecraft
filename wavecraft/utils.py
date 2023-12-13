@@ -153,7 +153,7 @@ def preview_audio(y, sr):
     - True if user confirms, else False.
     """
     print()
-    debug.log_any(f'Results...', 'preview')
+    debug.log_any('Results...', 'preview')
     y = basic_process(y, sr)
     sd.play(y, samplerate=sr)
         
