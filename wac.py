@@ -105,7 +105,7 @@ if __name__ == "__main__":
     normalization_group.add_argument("-nm", "--normalisation-mode", type=str, default="peak", choices=["peak", "rms", "loudness"], 
                         help="Normalisation mode; default is 'peak'.", required=False, metavar='')
 
-    # Metadata  
+    # Metadata
     metadata_group = parser.add_argument_group(title='Metadata - writes or reads metadata to/from the audio file', description='operations -> wmeta, rmeta')
     metadata_group.add_argument("--meta", type=str, help="List of metadata or comments to write to the file. Default is None.", required=False, nargs='+', metavar='')
     metadata_group.add_argument("-mf", "--meta-file", type=str, help="Path to a JSON metadata file. Default is None.", required=False, metavar='')
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     # trim
     trim_group = parser.add_argument_group(title='Trim - trims the audio file. Either range or silence can be used. Defining -tr will disable silence trimming', description='operation -> trim')
     trim_group.add_argument("-tr", "--trim-range", type=str, default=None, help="Trim position range in seconds. It can be a single value or a range (e.g. 0.5-1.5) or condition (e.g. -0.5).", required=False, metavar='')
-    trim_group.add_argument("-ts", "--trim-silence", type=float, default=-65, help="Trim silence from the beginning and end of the audio file. Default is -65 db.", required=False, metavar='')
+    trim_group.add_argument("-ts", "--trim-silence", type=float, default=-70, help="Trim silence from the beginning and end of the audio file. Default is -70 db.", required=False, metavar='')
 
     
     # split
@@ -122,10 +122,10 @@ if __name__ == "__main__":
     
     # fade
     fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file. See audio settings for options', description='operation -> fade')
-    fo_def=30
-    fi_def=20
-    fade_group.add_argument("-fi", "--fade-in", type=int, default=30, help=f"Duration in ms for fade in. Default is {fo_def}ms.", required=False, metavar='')
-    fade_group.add_argument("-fo", "--fade-out", type=int, default=50, help=f"Duration in ms for fade in. Default is {fi_def}ms.", required=False, metavar='')
+    FO=30
+    FI=20
+    fade_group.add_argument("-fi", "--fade-in", type=int, default=30, help=f"Duration in ms for fade in. Default is {FO}ms.", required=False, metavar='')
+    fade_group.add_argument("-fo", "--fade-out", type=int, default=50, help=f"Duration in ms for fade in. Default is {FI}ms.", required=False, metavar='')
     fade_group.add_argument("-ct", "--curve-type", type=str, choices=['exp', 'log', 'linear', 's_curve','hann'], default="exp",\
                         help="Type of curve to use for fades. Default is exponential.", required=False, metavar='')
     
