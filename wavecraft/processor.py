@@ -25,7 +25,7 @@ def mode_handler(func):
         output = os.path.splitext(self.args.input)[0] + ".wav"
         if self.mode == "render":
             if self.batch:
-                debug.log_warning("Batch processing. Skipping preview...")
+                debug.log_info("Batch processing. Skipping preview...")
                 self._render(result, output)
                 return
             else:

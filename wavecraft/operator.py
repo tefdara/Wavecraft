@@ -135,13 +135,14 @@ def main(args, revert=None):
                 debug.log_info('Extracting metadata')
                 metadata.extract_metadata(file)
                 
-        print("⠠⠙⠠⠕⠠⠝⠠⠑")
+        utils.print_seperator()
         args.n_fft = n_fft
         args.hop_size = hop_size
         args.window_length = window_length
         args.n_bins = n_bins
         args.n_mels = n_mels
 
+    utils.print_end()
     debug.log_done(f'<{args.operation}>')
     if len(warnings) > 0:
         debug.log_warning(f'Finished with <{len(warnings)} warning(s)>:')
