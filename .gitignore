@@ -114,3 +114,4 @@ dmypy.json
 .pyre/
 .pytype/
 cython_debug/
+wavecraft/Wave-Craft.code-workspace
