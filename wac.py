@@ -122,7 +122,7 @@ if __name__ == "__main__":
     
     # fade
     fade_group = parser.add_argument_group(title='Fade - applies a fade in and/or fade out to the audio file. See audio settings for options', description='operation -> fade')
-    FO=30
+    FO=25
     FI=20
     fade_group.add_argument("-fi", "--fade-in", type=int, default=30, help=f"Duration in ms for fade in. Default is {FO}ms.", required=False, metavar='')
     fade_group.add_argument("-fo", "--fade-out", type=int, default=50, help=f"Duration in ms for fade in. Default is {FI}ms.", required=False, metavar='')
