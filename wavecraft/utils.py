@@ -188,7 +188,22 @@ def finish_timer(condition):
 
 #######################
 # File management
-#######################   
+#######################
+
+def rename_file(file, name, use_parent_dir, index=0):
+    try:
+        ext = os.path.splitext(file)[1]
+        out_dir = os.path.dirname(file)
+        if use_parent_dir:
+            name = os.path.basename(os.path.dirname(file))
+        if index > 0:
+            name = f'{name}_{index}'
+        name = os.path.join(out_dir, f'{name}{ext}')
+        os.rename(file, name)
+        debug.log_info(f'Renamed {file} to {name}')
+    except Exception as e:
+        debug.log_error(f'Error renaming {file} to {name}. {str(e)}')
+
 def load_json (input):
     if os.path.isfile(input):
         try:
@@ -211,8 +226,10 @@ def load_json (input):
         return data
     
         
-def check_format(file):
-    return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3', 'json']
+def check_format(file, dsp):
+    if dsp:
+        return file.split('.')[-1] in ['wav', 'aif', 'aiff', 'flac', 'ogg', 'mp3']
+    return file.split('.')[-1] in ['yaml', 'json']
 
 
 def flatten_dict(d):

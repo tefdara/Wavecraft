@@ -141,8 +141,8 @@ class Segmentor:
             for i, line in enumerate(lines):
                 tokens = line.split()
                 start_time, end_time = tokens[:2]
-                start_time = float(start_time) * 1000  
-                end_time = float(end_time) * 1000 
+                start_time = float(start_time) * 1000
+                end_time = float(end_time) * 1000
 
                 start_sample = int(start_time * sr / 1000)
                 end_sample = int(end_time * sr / 1000)

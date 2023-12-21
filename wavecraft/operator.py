@@ -1,6 +1,7 @@
 """
 Operator module for WaveCraft. This module contains the main function for the WaveCraft CLI.
 """
+from calendar import c
 import os
 import sys
 import asyncio
@@ -9,7 +10,7 @@ import librosa
 from .segmentor import Segmentor
 from .feature_extractor import Extractor
 from .onset_detector import OnsetDetector
-from .debug import Debug as debug
+from .debug import Debug as debug, colors
 from .beat_detector import BeatDetector
 from .decomposer import Decomposer
 from .proxi_metor import ProxiMetor
@@ -34,8 +35,9 @@ def main(args, revert=None):
         craft.main()
         return
 
-    dsp = args.operation not in ["wmeta", "info"]
-    process = args.operation not in ["segment", "extract", "onset", "beat", "decomp", "proxim"]
+    dsp = args.operation not in ["wmeta", "info", "proxim"]
+    process = args.operation not in ["segment", "extract", "onset", "beat",
+                                           "decomp", "proxim", "rename"]
     # store these as they will be adjusted for short signals
     n_fft = args.n_fft
     hop_size = args.hop_size
@@ -45,7 +47,7 @@ def main(args, revert=None):
     n_mels = args.n_mels = 128
 
     debug.log_info('Loading...')
-    files = load_files(args.input)
+    files = load_files(args)
 
     warnings = {}
     errors = {}
@@ -57,8 +59,11 @@ def main(args, revert=None):
         from .processor import Processor  
         processor = Processor(args, mode='render', batch=batch)
 
+    count = 0
     for file in files:
         args.input = file
+        
+        
         if dsp:
             try:
                 if process:
@@ -121,6 +126,9 @@ def main(args, revert=None):
         elif args.operation == "split":
             debug.log_info(f'<Splitting> {file}')
             processor.split(args.y, args.sample_rate, args.split_points)
+        elif args.operation == "rename":
+            debug.log_info(f'<Renaming> {file}')
+            utils.rename_file(file, args.rename, args.parent_folder, count+1)
 
         else:
             if args.operation == "wmeta":
@@ -134,13 +142,15 @@ def main(args, revert=None):
             if args.operation == "rmeta":
                 debug.log_info('Extracting metadata')
                 metadata.extract_metadata(file)
-                
+
         utils.print_seperator()
         args.n_fft = n_fft
         args.hop_size = hop_size
         args.window_length = window_length
         args.n_bins = n_bins
         args.n_mels = n_mels
+
+        count += 1
 
     utils.print_end()
     debug.log_done(f'<{args.operation}>')
@@ -156,7 +166,7 @@ def main(args, revert=None):
             for e in errors[k]:
                 debug.log_error(f'{k}: <{e}>')
 
-def load_files(input_file):
+def load_files(args):
     """
     Load audio files from a given input file or directory.
 
@@ -169,7 +179,11 @@ def load_files(input_file):
     Raises:
         SystemExit: If no valid files are found or if the input file or directory is invalid.
     """
+    dsp = args.operation not in ["wmeta", "info", "proxim"]
+    meta = args.operation in ["wmeta", "rmeta", "info", "proxim"]
+    input_file = args.input
     files = []
+    
     if input_file is None or input_file == '':
         debug.log_error('No input file or directory provided!')
         sys.exit()
@@ -180,19 +194,53 @@ def load_files(input_file):
         debug.log_warning('You are about to process your home directory. Are you sure you want to continue?')
         user_input = input_file('\n1) Yes\n2) No\n')
         if user_input.lower() == '2':
-            sys.exit(1)           
+            sys.exit(1)
     if os.path.isdir(input_file):
         input_dir = input_file
-        for file in os.listdir(input_file):
-            if utils.check_format(file):
-                files.append(os.path.join(input_dir, file))
+        # check to see if dir has subdirs
+        if len(os.listdir(input_file)) > 0:
+            for file in os.listdir(input_file):
+                f = os.path.join(input_file, file)
+                if os.path.isdir(f):
+                    if not meta and os.path.basename(f) == 'wavecraft_data':
+                        continue
+                    debug.log_warning(f'Found subdirectory: <{file}>')
+                    user_input = input(f'\n{colors.GREEN}Choose an action:{colors.ENDC}\
+                        \n1) Process files in this subdirectory only \
+                        \n2) Process files in all subdirectories \
+                        \n3) Skip subdirectory \
+                        \n4) Exit\n')
+                    if user_input.lower() == '4':
+                        debug.log_info('Exiting...')
+                        sys.exit()
+                    if user_input.lower() == '1':
+                        for subfile in os.listdir(os.path.join(input_file, file)):
+                            if utils.check_format(subfile, dsp):
+                                files.append(os.path.join(input_dir, file, subfile))
+                    elif user_input.lower() == '2':
+                        debug.log_info('Searching for files in all subdirectories...')
+                        if args.operation == 'rename':
+                            # only add the parent folder if renaming
+                            files.append(os.path.join(input_dir, file))
+                        for root, _, sub_files in os.walk(input_dir):
+                            for file in sub_files:
+                                if utils.check_format(file, dsp):
+                                    files.append(os.path.join(root, file))
+                        break
+                    else:
+                        continue
+                else:
+                    if utils.check_format(file, dsp):
+                        files.append(os.path.join(input_dir, file))
+        else:
+            debug.log_error('No files found!')
+            sys.exit()
+
     # single file
     else:
-        if utils.check_format(input_file):
+        if utils.check_format(input_file, dsp):
             files.append(input_file)
     if len(files) == 0:
         debug.log_error('No valid files found!')
         sys.exit()
     return files
-
-

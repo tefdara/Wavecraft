@@ -9,9 +9,9 @@ if __name__ == "__main__":
     formatter_class=lambda prog: argparse.HelpFormatter(prog,
     max_help_position=8, width=80, indent_increment=4)
     usage = "wac.py operation [options] arg"
-    parser = argparse.ArgumentParser(prog='Wave Craft', epilog="For more information, visit: https://github.com/tefdara/Wave-Craft",
+    parser = argparse.ArgumentParser(prog='Wavecraft', epilog="For more information, visit: https://github.com/tefdara/Wavecraft",
                                         formatter_class=formatter_class, usage=usage)
-    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "wmeta"], 
+    parser.add_argument("operation", type=str, choices=["segment", "extract", "proxim", "onset", "beat", "decomp", "filter", "norm", "fade", "trim", "split", "pan", "rename", "wmeta"], 
                     help="Operation to perform. See below for details on each operation.",
                     metavar='operation')
     parser.add_argument("input", type=str,
@@ -133,7 +133,13 @@ if __name__ == "__main__":
     pan_group = parser.add_argument_group(title='Pan - pans the audio file', description='operation -> pan')
     pan_group.add_argument("-pa", "--pan-amount", type=float, default=0, help="Pan amount. Default is 0.", required=False, metavar='')
     pan_group.add_argument("-mo", "--mono", action='store_true', default=False, help="Converts the audio file to mono.", required=False)
-
+    
+    # rename
+    rename_group = parser.add_argument_group(title='Rename - renames audio files', description='operation -> rename')
+    rename_group.add_argument("-rn", "--rename", type=str, default=None, help="New name for the audio file. Default is None.", required=False, metavar='')
+    rename_group.add_argument("-pf", "--parent-folder", action='store_true', default=False, help="Flag to enable the use of the parent folder name as the new name for the file(s).", required=False)
+    rename_group.add_argument("-suf", "--suffix", type=str, default=None, help="Suffix to add to the new name. Default is None.", required=False, metavar='')
+    
     args = parser.parse_args()
 
     revert = None        
